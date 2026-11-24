@@ -35,18 +35,18 @@ th{background:#f0f0f0}
 <li>Configurar: Tamaño <b>25</b>, Semilla <b>2026</b></li>
 <li>Pulsar <b>Iniciar</b></li>
 <li>Esperar a que aparezcan víctimas (estado "known" en panel)</li>
-<li><b>Bloquear vía</b>: Pulsar botón "Bloquear vía" → click en una calle por donde pase un robot</li>
-<li><b>Desactivar robot</b>: Click en un robot de transporte (cuadrado azul) → pulsar "Desactivar robot elegido"</li>
+<li><b>Bloquear vía</b>: Pulsar botón "🚧 Colapsar vía (clic mapa)" → click en una calle por donde pase un robot</li>
+<li><b>Desactivar robot</b>: Click en un robot extractor (<code>U1–U3</code>) → pulsar "⚡ Desactivar unidad elegida"</li>
 <li>Observar panel del robot seleccionado y registro de mensajes</li>
 </ol>
 
 <h3>Criterios de Verificación</h3>
 <ul class="checklist">
 <li><label><input type="checkbox"> <b>Tareas duplicadas = 0</b> (panel muestra "Tareas duplicadas 0")</label></li>
-<li><label><input type="checkbox"> <b>Rutas con celdas bloqueadas = 0</b> (panel muestra "Rutas con celdas bloqueadas 0")</label></li>
+<li><label><input type="checkbox"> <b>Rutas bloqueadas = 0</b> (panel muestra "Rutas bloqueadas 0")</label></li>
 <li><label><input type="checkbox"> Re-asignación automática: víctima del robot desactivado vuelve a estado "known" y es tomada por otro robot</label></li>
 <li><label><input type="checkbox"> Re-planificación: robots afectados por bloqueo recalculan ruta (contador "Replanes" incrementa)</label></li>
-<li><label><input type="checkbox"> Mensajes en log: "Mensaje: T[X] libera víctima #Y (robot caído)" y "Mensaje: T[Z] toma la víctima #Y"</label></li>
+<li><label><input type="checkbox"> Mensajes en log: "[U1 ➔ Extractores] SOLICITUD RELEVO: ..." y "[U2 ➔ U1] RELEVO ACEPTADO: ..."</label></li>
 </ul>
 </details>
 
@@ -57,12 +57,12 @@ th{background:#f0f0f0}
 
 <ol>
 <li>En partida activa, cambiar selector "Algoritmo" a <b>Dijkstra</b></li>
-<li>Observar panel "Dijkstra frente a A*": anotar nodos medios Dijkstra</li>
-<li>Cambiar a <b>A*</b></li>
+<li>Observar panel "Comparación en Vivo: Dijkstra vs A*": anotar nodos medios Dijkstra</li>
+<li>Cambiar a <b>A* (Manhattan)</b></li>
 <li>Observar panel: nodos medios A* debe ser <b>≤ nodos Dijkstra</b></li>
 <li>Verificar heurística en panel robot: "Manhattan (admisible, consistente)"</li>
-<li>Ejecutar <b>Benchmark</b> (botón "Ejecutar benchmark")</li>
-<li>Verificar tabla: columna "A* igual al óptimo" = <b>100%</b> para todos los tamaños</li>
+<li>Ejecutar <b>Benchmark</b> (botón "📊 Ejecutar Benchmark (17, 33, 65, 129)")</li>
+<li>Verificar tabla: columna "A* Óptimo" = <b>100%</b> para todos los tamaños</li>
 <li>Verificar CSV exportado: misma semilla, mismos mapas, costos idénticos Dijkstra/A*</li>
 </ol>
 
@@ -80,11 +80,11 @@ th{background:#f0f0f0}
 <summary><b>Asignación por utilidad usa recursión acotada</b></summary>
 
 <ol>
-<li>Selector "Asignación" → <b>Asignación por utilidad</b></li>
+<li>Selector "Asignación" → <b>Asignación por utilidad (Recursiva)</b></li>
 <li>Iniciar partida, esperar asignaciones</li>
-<li>En panel robot, verificar línea "Recursión": muestra "X llamadas, profundidad Y"</li>
+<li>En panel robot, verificar línea "Recursión": muestra "X llamadas · prof. Y"</li>
 <li>Verificar: <b>profundidad Y ≤ 4</b> (límite L = min(R, 4))</li>
-<li>Cambiar a "Asignación por cercanía" → línea "Recursión" muestra "0 llamadas, profundidad 0"</li>
+<li>Cambiar a "Asignación por cercanía (Greedy)" → línea "Recursión" muestra "0 llamadas · prof. 0"</li>
 </ol>
 
 <ul class="checklist">
@@ -117,7 +117,7 @@ th{background:#f0f0f0}
 <li><label><input type="checkbox"> Todos los campos presentes y actualizados en tiempo real</label></li>
 <li><label><input type="checkbox"> Registro de planes y mensajes: muestra últimos 40 eventos</label></li>
 <li><label><input type="checkbox"> Comparación Dijkstra/A* en vivo: búsquedas, nodos medios, ms medios</label></li>
-<li><label><input type="checkbox"> Contadores globales: Tiempo, Rescatadas, Replanes</label></li>
+<li><label><input type="checkbox"> Contadores globales: Tiempo, Evacuados, CMD-0, Puntos, Replanes</label></li>
 </ul>
 </details>
 

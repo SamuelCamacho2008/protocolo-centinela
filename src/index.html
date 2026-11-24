@@ -107,6 +107,18 @@ th{color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
 .agent-tabs{display:flex;gap:5px;flex-wrap:wrap}
 .agent-tabs button{padding:3px 9px;min-height:28px;font-size:12px}
 .agent-tabs button.active{background:var(--ac);color:#04101f;border-color:var(--ac)}
+.fleet-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.fleet-chip{
+  padding:5px 6px;border-radius:8px;border:1px solid var(--ln);background:var(--pn2);
+  font-size:11px;text-align:center;cursor:pointer;transition:all .15s ease;display:flex;flex-direction:column;gap:2px
+}
+.fleet-chip.active{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
+.fleet-chip.off{opacity:.45;border-color:var(--rk)}
+.fleet-chip b{font-size:12px}
+.fleet-chip span{color:var(--mu);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filter-tabs{display:flex;gap:4px}
+.filter-tabs button{padding:2px 8px;min-height:24px;font-size:11px}
+.filter-tabs button.active{background:var(--ac);color:#04101f;border-color:var(--ac)}
 textarea{
   width:100%;height:110px;font:12px/1.4 monospace;background:var(--bd);color:var(--tx);
   border:1px solid var(--ln);border-radius:8px;padding:8px;margin-top:8px;
@@ -234,9 +246,10 @@ details p,details li{color:var(--tx);font-size:13.5px}
   <aside style="display:grid;gap:14px;align-content:start">
     <section class="card">
       <div class="card-hd">
-        <h2>Telemetría del Agente</h2>
+        <h2>Panel de Monitoreo · IA Agéntica</h2>
         <span id="acceptBadge" class="pill ok">Aceptación: OK</span>
       </div>
+      <div id="fleetStrip" class="fleet-strip"></div>
       <dl id="pn"></dl>
     </section>
 
@@ -249,7 +262,12 @@ details p,details li{color:var(--tx);font-size:13.5px}
 
     <section class="card">
       <div class="card-hd">
-        <h2>Bitácora de Decisiones y Mensajes</h2>
+        <h2>Comunicación entre Agentes y Planes</h2>
+        <div class="filter-tabs" id="logTabs">
+          <button data-lf="all" class="active">Todos</button>
+          <button data-lf="msg">💬 Mensajes (<span id="msgCnt">0</span>)</button>
+          <button data-lf="plan">🔄 Planes</button>
+        </div>
       </div>
       <div id="log"></div>
     </section>
@@ -288,7 +306,7 @@ const MAXE = 150, CMD_MAXE = 180;
 const STATS = { 'A*': { n: 0, e: 0, m: 0 }, Dijkstra: { n: 0, e: 0, m: 0 } };
 const PAL = {};
 
-let g, run = false, modeClick = null, last = 0, acc = 0, pulseWave = 0;
+let g, run = false, modeClick = null, last = 0, acc = 0, pulseWave = 0, hoverCell = -1;
 
 function updatePalette() {
   const s = getComputedStyle(document.documentElement);
@@ -415,10 +433,38 @@ function search(G, s, t, algo, record = true) {
 }
 
 const man = (a, b) => Math.abs((a % g.n) - (b % g.n)) + Math.abs(((a / g.n) | 0) - ((b / g.n) | 0));
+const xy = i => `(${i % g.n},${(i / g.n) | 0})`;
 
-function addLog(text, kind = '') {
-  g.log.unshift({ t: g.t, text, kind });
-  if (g.log.length > 50) g.log.pop();
+function addLog(text, kind = '', cat = 'plan') {
+  g.log.unshift({ t: g.t, text, kind, cat });
+  if (g.log.length > 80) g.log.pop();
+}
+
+// Bus de comunicación multiagente con registro estructurado y enlace visual en el mapa
+function emitMsg(fromId, toId, topic, detail, kind = 'msg') {
+  g.msgCount++;
+  const text = `[${fromId} ➔ ${toId}] ${topic}: ${detail}`;
+  addLog(text, kind, 'msg');
+
+  const getPos = id => {
+    if (id === 'CMD-0') return g.player.pos;
+    const rb = g.robots.find(x => x.id === id);
+    return rb ? rb.pos : -1;
+  };
+  const fromPos = getPos(fromId);
+  if (fromPos >= 0) {
+    const targets = toId === 'Todos' || toId === 'Flota'
+      ? g.robots.filter(x => !x.off && x.id !== fromId).map(x => x.pos)
+      : toId === 'Extractores'
+        ? g.robots.filter(x => !x.off && x.type === 'U' && x.id !== fromId).map(x => x.pos)
+        : [getPos(toId)].filter(p => p >= 0);
+    for (const toPos of targets) {
+      if (toPos !== fromPos) {
+        g.beams.push({ from: fromPos, to: toPos, life: 1.0, color: fromId === 'CMD-0' ? 'pl' : kind === 'warn' ? 'rk' : 'ac' });
+      }
+    }
+    if (g.beams.length > 18) g.beams.splice(0, g.beams.length - 18);
+  }
 }
 
 function init(n, seed) {
@@ -433,7 +479,7 @@ function init(n, seed) {
     st: mid,
     safes: [0, N - 1],
     t: 0, over: '', win: false, rescued: 0, score: 0,
-    vics: [], log: [],
+    vics: [], log: [], beams: [], msgCount: 0, logFilter: 'all',
     algo: $('#al').value,
     mode: $('#md').value,
     sel: 'U1',
@@ -446,7 +492,7 @@ function init(n, seed) {
     robots: ['S1', 'S2', 'U1', 'U2', 'U3'].map(id => ({
       id, type: id[0], pos: mid, energy: MAXE, state: 'libre',
       path: [], goal: -1, carry: null, victim: null, off: 0, info: null,
-      sec: id === 'S1' ? 0 : 1, lastEvent: 'Despliegue inicial'
+      sec: id === 'S1' ? 0 : 1, lastEvent: 'Despliegue inicial', rescuedByBot: 0
     }))
   };
 
@@ -455,7 +501,7 @@ function init(n, seed) {
   while (g.vics.length < V) {
     const i = (r() * N) | 0;
     if (!road[i] || man(i, mid) < 6 || g.safes.some(s => man(i, s) < 4) || g.vics.some(v => v.pos === i)) continue;
-    g.vics.push({ id: g.vics.length + 1, pos: i, prio: 1 + ((r() * 3) | 0), st: 'hidden', by: null });
+    g.vics.push({ id: g.vics.length + 1, pos: i, prio: 1 + ((r() * 3) | 0), st: 'hidden', by: null, lastOwner: null });
   }
 
   // Baterías tácticas coleccionables para el Comandante
@@ -505,7 +551,9 @@ function visionAll() {
     if (v.st === 'hidden' && g.seen[v.pos]) {
       v.st = 'known';
       g.dirty = true;
-      addLog(`Sensor detecta civil #${v.id} (Prioridad ${v.prio}).`, 'ok');
+      const spotter = g.robots.filter(r => !r.off && man(r.pos, v.pos) <= 4).sort((a, b) => man(a.pos, v.pos) - man(b.pos, v.pos))[0];
+      const sender = spotter ? spotter.id : 'CMD-0';
+      emitMsg(sender, 'Extractores', 'HALLAZGO', `Civil #${v.id} en ${xy(v.pos)} [P${v.prio}]`, 'ok');
     }
   }
 }
@@ -545,7 +593,8 @@ function release(r, why) {
   if (v) {
     v.st = 'known';
     v.by = null;
-    addLog(`Msg ${r.id}→Escuadrón: libero civil #${v.id} (${why}).`, 'msg');
+    v.lastOwner = r.id;
+    emitMsg(r.id, 'Extractores', 'SOLICITUD RELEVO', `Libero civil #${v.id} en ${xy(v.pos)} (${why})`, 'warn');
   }
   r.victim = null;
   r.state = 'libre';
@@ -561,17 +610,19 @@ function arrive(r) {
     r.carry = v;
     v.st = 'carry';
     r.state = 'entregar';
+    emitMsg(r.id, 'Flota', 'CARGA ASEGURADA', `Recogido civil #${v.id}, rumbo a escotilla`, 'msg');
     goSafe(r);
   } else if (r.state === 'entregar') {
     v.st = 'ok';
     g.rescued++;
+    r.rescuedByBot++;
     g.score += 100 * v.prio;
     r.carry = null;
     r.victim = null;
     r.state = 'libre';
     r.goal = -1;
     r.lastEvent = `Civil #${v.id} evacuado`;
-    addLog(`${r.id} evacúa al civil #${v.id} en escotilla segura (+${100 * v.prio} pts).`, 'ok');
+    emitMsg(r.id, 'Todos', 'EVACUACIÓN COMPLETA', `Civil #${v.id} a salvo (+${100 * v.prio} pts)`, 'ok');
     g.dirty = true;
   } else if (r.state === 'recarga') {
     r.state = 'carga';
@@ -590,9 +641,9 @@ function replan(r) {
     r.path = q.path.slice(1);
     r.info = q;
     r.lastEvent = `Replan ${g.algo} (costo ${q.cost.toFixed(1)})`;
-    addLog(`${r.id} recalcula ruta con ${g.algo} (costo ${q.cost.toFixed(1)}).`, 'msg');
+    addLog(`${r.id} recalcula ruta con ${g.algo} → costo ${q.cost.toFixed(1)} (${q.exp} nodos).`, 'msg', 'plan');
   } else {
-    addLog(`${r.id} sin ruta disponible hacia su objetivo.`, 'warn');
+    emitMsg(r.id, 'Flota', 'RUTA BLOQUEADA', `Sin acceso hacia ${xy(r.goal)}`, 'warn');
     if (r.state === 'recoger') release(r, 'vía inaccesible');
     else if (r.state === 'entregar') goSafe(r);
     else { r.state = 'libre'; r.path = []; r.goal = -1; }
@@ -604,14 +655,15 @@ function disable(r, why) {
   r.off = 1;
   r.path = [];
   r.lastEvent = `Desactivado (${why})`;
-  addLog(`ALERTA: ${r.id} fuera de servicio (${why}).`, 'warn');
+  emitMsg(r.id, 'Todos', 'UNIDAD CAÍDA', `Fuera de servicio en ${xy(r.pos)} (${why})`, 'warn');
   if (r.carry) {
     const v = r.carry;
     v.st = 'known';
     v.by = null;
+    v.lastOwner = r.id;
     v.pos = r.pos;
     r.carry = null;
-    addLog(`Msg emergencia: civil #${v.id} requiere reasignación inmediata.`, 'warn');
+    emitMsg(r.id, 'Extractores', 'RELEVO URGENTE', `Civil #${v.id} abandonado en ${xy(v.pos)}, requiere rescate`, 'warn');
   } else if (r.victim) {
     release(r, 'unidad caída');
   }
@@ -621,6 +673,7 @@ function disable(r, why) {
 function revalidate() {
   for (const r of g.robots) {
     if (!r.off && r.path.length && r.path.some(c => g.blocked[c] || g.risk[c] >= 4)) {
+      emitMsg(r.id, 'Flota', 'ALERTA DE PELIGRO', `Ruta obstruida cerca de ${xy(r.pos)}, replanificando`, 'warn');
       replan(r);
     }
   }
@@ -683,7 +736,8 @@ function clearCell(i) {
   g.risk[i] = 0;
   g.player.cleared++;
   g.score += 35;
-  addLog('CMD-0 despejó escombros y estabilizó la vía (+35 pts).', 'cmd');
+  addLog('CMD-0 despejó escombros y estabilizó la vía (+35 pts).', 'cmd', 'plan');
+  emitMsg('CMD-0', 'Todos', 'VÍA DESPEJADA', `Corredor ${xy(i)} rehabilitado`, 'ok');
   g.skip.clear();
   revalidate();
   g.dirty = true;
@@ -831,7 +885,12 @@ function assign() {
     r.goal = v.pos;
     r.info = q;
     r.lastEvent = `Asignado civil #${v.id} (P${v.prio})`;
-    addLog(`Msg ${r.id}: reclamo civil #${v.id} (P${v.prio}, costo ${q.cost.toFixed(1)}, ${g.mode === 'u' ? 'utilidad' : 'cercanía'}).`, 'msg');
+    if (v.lastOwner && v.lastOwner !== r.id) {
+      emitMsg(r.id, v.lastOwner, 'RELEVO ACEPTADO', `Asumo rescate de civil #${v.id} [P${v.prio}] (costo ${q.cost.toFixed(1)})`, 'msg');
+      v.lastOwner = null;
+    } else {
+      emitMsg(r.id, 'Flota', 'RECLAMO MISIÓN', `Voy por civil #${v.id} [P${v.prio}] (${g.mode === 'u' ? 'utilidad' : 'cercanía'}, costo ${q.cost.toFixed(1)})`, 'msg');
+    }
     if (!r.path.length) arrive(r);
   }
 }
@@ -906,6 +965,18 @@ function triggerSonar() {
 function playerContextAction() {
   if (g.over) return;
   const p = g.player;
+  // 0. Si lleva civil y ya está en Escotilla Segura, evacuar
+  if (p.carry && g.safes.includes(p.pos)) {
+    p.carry.st = 'ok';
+    g.rescued++;
+    p.rescuedByPlayer++;
+    g.score += 150 * p.carry.prio;
+    emitMsg('CMD-0', 'Todos', 'EVACUACIÓN DIRECTA', `Civil #${p.carry.id} evacuado (+${150 * p.carry.prio} pts)`, 'ok');
+    p.carry = null;
+    checkEnd();
+    ui(); draw();
+    return;
+  }
   // 1. Si no lleva civil, buscar civil cercano (dist <= 1) para rescatar
   if (!p.carry) {
     const v = g.vics.find(x => (x.st === 'known' || x.st === 'hidden' || x.st === 'claimed') && man(x.pos, p.pos) <= 1);
@@ -915,10 +986,10 @@ function playerContextAction() {
         if (holder) {
           holder.victim = null; holder.state = 'libre'; holder.path = []; holder.goal = -1;
           holder.lastEvent = 'Relevado por CMD-0';
-          addLog(`CMD-0 releva a ${holder.id} y recoge al civil #${v.id}.`, 'cmd');
+          emitMsg('CMD-0', holder.id, 'RELEVO DIRECTO', `Tomo control de civil #${v.id}, queda libre`, 'cmd');
         }
       } else {
-        addLog(`CMD-0 recoge al civil #${v.id} (llévalo a una Escotilla verde).`, 'cmd');
+        addLog(`CMD-0 recoge al civil #${v.id} (llévalo a una Escotilla verde).`, 'cmd', 'plan');
       }
       v.st = 'carry';
       v.by = 'CMD-0';
@@ -936,11 +1007,11 @@ function playerContextAction() {
     p.energy -= gift;
     ally.energy += gift;
     g.score += 20;
-    addLog(`CMD-0 transfirió +${gift.toFixed(0)} energía a ${ally.id} (+20 pts).`, 'cmd');
+    emitMsg('CMD-0', ally.id, 'TRANSFERENCIA ENERGÍA', `+${gift.toFixed(0)} energía suministrada (+20 pts)`, 'cmd');
     ui(); draw();
     return;
   }
-  addLog('CMD-0: acércate a un civil (dist ≤ 1) para rescatarlo o a un robot para recargarlo.', 'cmd');
+  addLog('CMD-0: acércate a un civil (dist ≤ 1) para rescatarlo o a un robot para recargarlo.', 'cmd', 'plan');
   ui();
 }
 
@@ -998,6 +1069,32 @@ function tick() {
   ui();
 }
 
+// Percepción relevante local del agente en radio 3 (cumplimiento guía §6)
+function getPerceptionSummary(r) {
+  const n = g.n, rx = r.pos % n, ry = (r.pos / n) | 0;
+  let free = 0, risk = 0, blk = 0;
+  for (let dy = -3; dy <= 3; dy++) {
+    for (let dx = -3; dx <= 3; dx++) {
+      const a = rx + dx, b = ry + dy;
+      if (a < 0 || b < 0 || a >= n || b >= n || Math.abs(dx) + Math.abs(dy) > 4) continue;
+      const j = b * n + a;
+      if (!g.road[j]) continue;
+      if (g.blocked[j]) blk++;
+      else if (g.risk[j] > 0) risk++;
+      else free++;
+    }
+  }
+  const nearV = g.vics.filter(v => (v.st === 'known' || v.st === 'claimed') && man(v.pos, r.pos) <= 4).length;
+  return `${free} libres · ${risk} riesgo · ${blk} blq · ${nearV} civiles`;
+}
+
+function formatRoute(r) {
+  if (!r.path.length) return '0 pasos (en posición)';
+  const pts = r.path.slice(0, 3).map(xy).join(' → ');
+  const tail = r.path.length > 3 ? ` → … → ${xy(r.path[r.path.length - 1])}` : '';
+  return `${r.path.length} pasos [${pts}${tail}]`;
+}
+
 function ui() {
   const r = g.robots.find(x => x.id === g.sel) || g.robots[0];
   const q = r.info;
@@ -1021,25 +1118,59 @@ function ui() {
     `<span class="pill">🔄 Replanes <b>${g.replans}</b></span>`;
 
   const stEl = $('#st');
-  stEl.textContent = g.over || (run ? 'OPERACIÓN EN CURSO · Controla a CMD-0 y supervisa la flota' : 'EN PAUSA · Pulsa Iniciar o muévete con WASD');
+  stEl.textContent = g.over || (run ? 'MISIÓN EN CURSO · Controla a CMD-0 y supervisa la flota' : 'EN PAUSA · Pulsa Iniciar o muévete con WASD');
   stEl.className = 'status-banner' + (g.over ? (g.win ? ' win' : ' lose') : '');
 
-  $('#cmdStatus').textContent = g.player.carry
+  // Aviso contextual inteligente para el jugador
+  const p = g.player;
+  const nearVic = !p.carry && g.vics.find(x => (x.st === 'known' || x.st === 'hidden' || x.st === 'claimed') && man(x.pos, p.pos) <= 1);
+  const nearDebris = DX.some((dx, idx) => {
+    const nx = (p.pos % g.n) + dx, ny = ((p.pos / g.n) | 0) + DY[idx];
+    if (nx < 0 || ny < 0 || nx >= g.n || ny >= g.n) return false;
+    const j = ny * g.n + nx;
+    return g.road[j] && (g.blocked[j] || g.risk[j] > 0);
+  });
+  const nearAlly = g.robots.find(a => !a.off && man(a.pos, p.pos) <= 1 && a.energy < MAXE - 25);
+
+  $('#cmdStatus').textContent = p.carry
     ? `Llevando civil #${pCarryId()} → Ve a una Escotilla verde`
-    : (g.player.sonarCd > 0 ? `Sonar en ${g.player.sonarCd}t` : 'Sonar listo');
+    : nearVic
+      ? `¡Civil #${nearVic.id} al alcance! Pulsa [F] para rescatar`
+      : nearDebris
+        ? '¡Vía afectada cerca! Pulsa [E] para despejar'
+        : nearAlly
+          ? `Aliado ${nearAlly.id} con baja batería: [F] recarga`
+          : (p.sonarCd > 0 ? `Sonar recargando (${p.sonarCd}t)` : 'Sonar listo [Espacio]');
 
   const ab = $('#acceptBadge');
   const acceptOk = dup === 0 && bad === 0;
   ab.textContent = acceptOk ? 'Aceptación: 0 errores' : `Alerta: dup=${dup} blq=${bad}`;
   ab.className = 'pill ' + (acceptOk ? 'ok' : 'warn');
 
+  // Tira rápida de toda la flota
+  const fsEl = $('#fleetStrip');
+  if (fsEl) {
+    fsEl.innerHTML = g.robots.map(x => {
+      const pct = Math.round((x.energy / MAXE) * 100);
+      return `<div class="fleet-chip ${x.id === g.sel ? 'active' : ''} ${x.off ? 'off' : ''}" data-sel="${x.id}">
+        <b>${x.id}</b>
+        <span>${x.off ? 'OFF' : x.state}</span>
+        <span style="color:${pct < 35 ? 'var(--rk)' : 'var(--sf)'}">${pct}%</span>
+      </div>`;
+    }).join('');
+    fsEl.querySelectorAll('.fleet-chip').forEach(el => {
+      el.onclick = () => { g.sel = el.dataset.sel; renderAgentTabs(); ui(); draw(); };
+    });
+  }
+
   $('#pn').innerHTML = [
     ['Unidad', `${r.id} (${r.type === 'S' ? 'Sonda Recon' : 'Extractor'})`],
     ['Estado', r.off ? 'DESACTIVADA' : r.state.toUpperCase()],
     ['Objetivo', r.off ? '—' : objNames[r.state]],
+    ['Percepción relevante', r.off ? 'Sin sensores (offline)' : getPerceptionSummary(r)],
+    ['Ruta', formatRoute(r)],
     ['Último evento', r.lastEvent],
     ['Energía', `${r.energy.toFixed(0)} / ${MAXE}`],
-    ['Ruta restante', `${r.path.length} celdas`],
     ['Algoritmo', q ? q.algo : '—'],
     ['Heurística', q ? (q.algo === 'A*' ? 'Manhattan (admisible, consistente)' : 'Nula (h = 0)') : '—'],
     ['Costo de ruta', q ? q.cost.toFixed(1) : '—'],
@@ -1057,7 +1188,10 @@ function ui() {
       return `<tr><td>${k}</td><td>${s.n}</td><td>${s.n ? (s.e / s.n).toFixed(1) : '—'}</td><td>${s.n ? (s.m / s.n).toFixed(3) : '—'}</td></tr>`;
     }).join('') + '</table>';
 
-  $('#log').innerHTML = g.log.map(x =>
+  const mcEl = $('#msgCnt');
+  if (mcEl) mcEl.textContent = g.msgCount;
+  const filtered = g.log.filter(x => g.logFilter === 'all' || x.cat === g.logFilter);
+  $('#log').innerHTML = filtered.map(x =>
     `<div class="log-row ${x.kind}"><span class="t">t${x.t}</span>${x.text}</div>`
   ).join('');
 }
@@ -1109,6 +1243,27 @@ function draw() {
   for (const z of g.safes) {
     c.strokeRect(cx(z) - s * 0.65, cy(z) - s * 0.65, s * 1.3, s * 1.3);
   }
+  if (s >= 14) {
+    c.font = `bold ${Math.max(8, s * 0.34)}px sans-serif`;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillStyle = PAL.am;
+    c.fillText('⚡', cx(g.st), cy(g.st) - s * 0.88);
+    c.fillStyle = PAL.sf;
+    for (const z of g.safes) {
+      c.fillText('SAFE', cx(z), cy(z) + (z === 0 ? s * 0.88 : -s * 0.88));
+    }
+  }
+
+  // Resaltado de celda bajo cursor en modo bloqueo/despeje
+  if (hoverCell >= 0 && hoverCell < n * n && modeClick) {
+    const hx = (hoverCell % n) * s, hy = ((hoverCell / n) | 0) * s;
+    c.save();
+    c.strokeStyle = modeClick === 'block' ? PAL.rk : PAL.sf;
+    c.lineWidth = 2.5;
+    c.strokeRect(hx + 1, hy + 1, s - 2, s - 2);
+    c.restore();
+  }
 
   // Ruta del agente seleccionado
   const sel = g.robots.find(x => x.id === g.sel);
@@ -1122,6 +1277,25 @@ function draw() {
     for (const p of sel.path) c.lineTo(cx(p), cy(p));
     c.stroke();
     c.restore();
+  }
+
+  // Señales de comunicación visual entre agentes
+  if (g.beams && g.beams.length) {
+    for (let i = g.beams.length - 1; i >= 0; i--) {
+      const bm = g.beams[i];
+      c.save();
+      c.strokeStyle = PAL[bm.color] || PAL.ac;
+      c.globalAlpha = bm.life * 0.75;
+      c.lineWidth = 2;
+      c.setLineDash([5, 5]);
+      c.beginPath();
+      c.moveTo(cx(bm.from), cy(bm.from));
+      c.lineTo(cx(bm.to), cy(bm.to));
+      c.stroke();
+      c.restore();
+      bm.life -= 0.035;
+      if (bm.life <= 0) g.beams.splice(i, 1);
+    }
   }
 
   // Onda de sonar animada
@@ -1142,14 +1316,21 @@ function draw() {
     if (v.st === 'hidden' || v.st === 'ok' || v.st === 'carry') continue;
     c.fillStyle = v.prio === 3 ? PAL.rk : v.prio === 2 ? PAL.am : PAL.mu;
     c.beginPath();
-    c.arc(cx(v.pos), cy(v.pos), s * (0.2 + 0.055 * v.prio), 0, Math.PI * 2);
+    c.arc(cx(v.pos), cy(v.pos), s * (0.22 + 0.055 * v.prio), 0, Math.PI * 2);
     c.fill();
     c.strokeStyle = PAL.tx;
     c.lineWidth = v.st === 'claimed' ? 2.5 : 1;
     c.stroke();
+    if (s >= 14) {
+      c.fillStyle = '#07101f';
+      c.font = `bold ${Math.max(8, s * 0.36)}px sans-serif`;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(String(v.prio), cx(v.pos), cy(v.pos) + 0.5);
+    }
   }
 
-  // Robots autónomos
+  // Robots autónomos + barra de energía
   c.font = `bold ${Math.max(9, s * 0.45)}px sans-serif`;
   c.textAlign = 'center';
   c.textBaseline = 'middle';
@@ -1158,7 +1339,6 @@ function draw() {
     c.fillStyle = r.off ? PAL.mu : r.type === 'S' ? PAL.ex : PAL.rb;
     c.beginPath();
     if (r.type === 'S') {
-      // Diamante para Sondas
       c.moveTo(x, y - h * 1.15); c.lineTo(x + h * 1.15, y); c.lineTo(x, y + h * 1.15); c.lineTo(x - h * 1.15, y);
       c.closePath();
     } else {
@@ -1169,6 +1349,13 @@ function draw() {
       c.strokeStyle = PAL.tx;
       c.lineWidth = 2.5;
       c.stroke();
+    }
+    if (!r.off && s >= 12) {
+      const pct = Math.max(0, Math.min(1, r.energy / MAXE));
+      c.fillStyle = 'rgba(0,0,0,0.65)';
+      c.fillRect(x - h, y + h + 2, 2 * h, 3);
+      c.fillStyle = pct < 0.35 ? PAL.rk : PAL.sf;
+      c.fillRect(x - h, y + h + 2, 2 * h * pct, 3);
     }
     if (r.carry) {
       c.fillStyle = PAL.rk;
@@ -1209,6 +1396,22 @@ function draw() {
 }
 
 // INTERACCIÓN CANVAS Y TECLADO
+$('#cv').onmousemove = e => {
+  const b = e.target.getBoundingClientRect(), n = g.n;
+  const x = Math.floor(((e.clientX - b.left) / b.width) * n);
+  const y = Math.floor(((e.clientY - b.top) / b.height) * n);
+  hoverCell = (x >= 0 && y >= 0 && x < n && y < n) ? y * n + x : -1;
+};
+$('#cv').onmouseleave = () => { hoverCell = -1; };
+
+document.querySelectorAll('#logTabs button').forEach(btn => {
+  btn.onclick = () => {
+    g.logFilter = btn.dataset.lf;
+    document.querySelectorAll('#logTabs button').forEach(b => b.classList.toggle('active', b === btn));
+    ui();
+  };
+});
+
 $('#cv').onclick = e => {
   const b = e.target.getBoundingClientRect(), n = g.n;
   const x = Math.floor(((e.clientX - b.left) / b.width) * n);
@@ -1371,15 +1574,16 @@ function bench() {
         for (const f of 'mec') agg[al][f] += z[f] / 50;
       }
     }
+    const memKb = ((N * (8 + 4 + 1 + 4 + 4)) / 1024).toFixed(1);
     for (const al of ['Dijkstra', 'A*']) {
       rows.push(
-        `<tr><td>${n} × ${n}</td><td>${al}</td><td>${agg[al].m.toFixed(3)}</td><td>${agg[al].e.toFixed(0)}</td><td>${agg[al].c.toFixed(1)}</td><td>${al === 'A*' ? ((100 * opt) / tot).toFixed(0) + '%' : '—'}</td></tr>`
+        `<tr><td>${n} × ${n} <span style="color:var(--mu);font-size:11px">(V=${rc.length})</span></td><td>${al}</td><td>${agg[al].m.toFixed(3)}</td><td>${agg[al].e.toFixed(0)}</td><td>${agg[al].c.toFixed(1)}</td><td>${memKb} KB</td><td>${al === 'A*' ? ((100 * opt) / tot).toFixed(0) + '%' : '—'}</td></tr>`
       );
     }
   }
 
   $('#bo').innerHTML =
-    `<table><tr><th>Mapa</th><th>Algoritmo</th><th>ms / búsqueda</th><th>Nodos expandidos</th><th>Costo medio</th><th>A* Óptimo</th></tr>${rows.join('')}</table>` +
+    `<table><tr><th>Mapa (Vértices)</th><th>Algoritmo</th><th>ms / búsqueda</th><th>Nodos expandidos</th><th>Costo medio</th><th>Memoria est.</th><th>A* Óptimo</th></tr>${rows.join('')}</table>` +
     `<p style="color:var(--mu);margin:8px 0 4px;font-size:12px">Equipo: ${eq} · Semilla: ${seed}</p>` +
     `<textarea id="csvArea" readonly aria-label="CSV de resultados">${csv.join('\n')}</textarea>`;
 
@@ -1398,3 +1602,4 @@ requestAnimationFrame(frame);
 </script>
 </body>
 </html>
+

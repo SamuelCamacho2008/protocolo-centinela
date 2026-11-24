@@ -140,5 +140,5 @@ No hay canal de comunicación explícito; la comunicación es **estigmergia** a 
 **Victoria**: `rescued >= goal` (goal = 70% de víctimas totales)
 
 **Derrota**:
-- `t >= limit` (límite = `n * 14` ticks)
-- `robots_transporte_activos == 0`
+- `t >= limit` (límite = `n * 15` ticks)
+- `robots_transporte_activos == 0` y `CMD-0` sin energía ni civil a bordo (`!player.carry && player.energy <= 0`)

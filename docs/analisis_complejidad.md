@@ -9,7 +9,7 @@
 - `R`: Robots de transporte activos (≤ 3)
 - `C`: Víctimas conocidas candidatas (≤ 6)
 - `L`: Límite profundidad recursión = min(R, 4)
-- `T`: Ticks totales de simulación = n × 14
+- `T`: Ticks totales de simulación = n × 15
 
 ---
 
@@ -92,13 +92,13 @@ O(búsquedas × V log V + n)
 
 #### Ticks Totales
 ```
-T = n × 14
+T = n × 15
 ```
 
 #### Búsquedas Totales Estimadas
 ```
 Por tick: ~10 búsquedas promedio
-Total: ~10 × n × 14 = 140n búsquedas
+Total: ~10 × n × 15 = 150n búsquedas
 ```
 
 #### Tiempo Total Teórico
@@ -245,7 +245,7 @@ equipo,semilla,tamano,repeticion,algoritmo,ms_medio,nodos_medios,costo_medio
 | **Asignación Utilidad** | O((C+1)^R) acotado | O(L) stack | Recursividad con poda, L≤4 |
 | **Asignación Cercanía** | O(R×C) | O(1) | Greedy |
 | **Percepción** | O(1) por tick | O(V) global | Radio 3 fijo |
-| **Simulación completa** | O(n³ log n) | O(n²) | T = 14n ticks |
+| **Simulación completa** | O(n³ log n) | O(n²) | T = 15n ticks |
 | **Benchmark** | O(tamaños × reps × búsquedas × V log V) | O(1) extra | Offline, no afecta juego |
 
 ---
