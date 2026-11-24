@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pruebas de Aceptación - Protocolo Centinela</title>
+<style>
+body{font:14px/1.5 system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem}
+h1,h2{color:#1d2430}
+.code{background:#f5f5f5;padding:0.5rem;border-radius:4px;font-family:monospace;overflow:auto}
+.pass{color:#12935f;font-weight:bold}
+.fail{color:#d93a2f;font-weight:bold}
+.checklist{list-style:none;padding:0}
+.checklist li{padding:0.5rem;border-bottom:1px solid #eee}
+.checklist label{display:flex;align-items:center;gap:0.5rem;cursor:pointer}
+.checklist input{transform:scale(1.2)}
+details{margin:1rem 0;padding:1rem;background:#fafafa;border-radius:4px}
+summary{cursor:pointer;font-weight:bold}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #ddd;padding:0.5rem;text-align:left}
+th{background:#f0f0f0}
+</style>
+</head><body>
+<h1>Pruebas de Aceptación - Protocolo Centinela</h1>
+
+<p>Esta página documenta las pruebas de aceptación requeridas por la guía del proyecto. Ejecuta el juego en <a href="../index.html" target="_blank">index.html</a> y verifica cada punto.</p>
+
+<h2>1. Prueba de Aceptación Principal (Guía § Requisitos comunes)</h2>
+
+<details open>
+<summary><b>Escenario: Bloquear vía + Desactivar robot</b></summary>
+
+<ol>
+<li>Abrir <code>src/index.html</code> en navegador</li>
+<li>Configurar: Tamaño <b>25</b>, Semilla <b>2026</b></li>
+<li>Pulsar <b>Iniciar</b></li>
+<li>Esperar a que aparezcan víctimas (estado "known" en panel)</li>
+<li><b>Bloquear vía</b>: Pulsar botón "Bloquear vía" → click en una calle por donde pase un robot</li>
+<li><b>Desactivar robot</b>: Click en un robot de transporte (cuadrado azul) → pulsar "Desactivar robot elegido"</li>
+<li>Observar panel del robot seleccionado y registro de mensajes</li>
+</ol>
+
+<h3>Criterios de Verificación</h3>
+<ul class="checklist">
+<li><label><input type="checkbox"> <b>Tareas duplicadas = 0</b> (panel muestra "Tareas duplicadas 0")</label></li>
+<li><label><input type="checkbox"> <b>Rutas con celdas bloqueadas = 0</b> (panel muestra "Rutas con celdas bloqueadas 0")</label></li>
+<li><label><input type="checkbox"> Re-asignación automática: víctima del robot desactivado vuelve a estado "known" y es tomada por otro robot</label></li>
+<li><label><input type="checkbox"> Re-planificación: robots afectados por bloqueo recalculan ruta (contador "Replanes" incrementa)</label></li>
+<li><label><input type="checkbox"> Mensajes en log: "Mensaje: T[X] libera víctima #Y (robot caído)" y "Mensaje: T[Z] toma la víctima #Y"</label></li>
+</ul>
+</details>
+
+<h2>2. Comparación Dijkstra vs A* (Guía § Requisitos comunes)</h2>
+
+<details open>
+<summary><b>Verificación de optimalidad y nodos expandidos</b></summary>
+
+<ol>
+<li>En partida activa, cambiar selector "Algoritmo" a <b>Dijkstra</b></li>
+<li>Observar panel "Dijkstra frente a A*": anotar nodos medios Dijkstra</li>
+<li>Cambiar a <b>A*</b></li>
+<li>Observar panel: nodos medios A* debe ser <b>≤ nodos Dijkstra</b></li>
+<li>Verificar heurística en panel robot: "Manhattan (admisible, consistente)"</li>
+<li>Ejecutar <b>Benchmark</b> (botón "Ejecutar benchmark")</li>
+<li>Verificar tabla: columna "A* igual al óptimo" = <b>100%</b> para todos los tamaños</li>
+<li>Verificar CSV exportado: misma semilla, mismos mapas, costos idénticos Dijkstra/A*</li>
+</ol>
+
+<ul class="checklist">
+<li><label><input type="checkbox"> A* expande menos o igual nodos que Dijkstra</label></li>
+<li><label><input type="checkbox"> Heurística Manhattan mostrada como admisible y consistente</label></li>
+<li><label><input type="checkbox"> Benchmark: 100% optimalidad A* en todos los tamaños</label></li>
+<li><label><input type="checkbox"> CSV: costos Dijkstra = costos A* (diferencia < 1e-6)</label></li>
+</ul>
+</details>
+
+<h2>3. Verificación de Recursividad (Guía § Requisitos comunes)</h2>
+
+<details open>
+<summary><b>Asignación por utilidad usa recursión acotada</b></summary>
+
+<ol>
+<li>Selector "Asignación" → <b>Asignación por utilidad</b></li>
+<li>Iniciar partida, esperar asignaciones</li>
+<li>En panel robot, verificar línea "Recursión": muestra "X llamadas, profundidad Y"</li>
+<li>Verificar: <b>profundidad Y ≤ 4</b> (límite L = min(R, 4))</li>
+<li>Cambiar a "Asignación por cercanía" → línea "Recursión" muestra "0 llamadas, profundidad 0"</li>
+</ol>
+
+<ul class="checklist">
+<li><label><input type="checkbox"> Modo utilidad: recursión > 0 llamadas, profundidad ≤ 4</label></li>
+<li><label><input type="checkbox"> Modo cercanía: recursión = 0 llamadas</label></li>
+<li><label><input type="checkbox"> Caso base: sin robots libres o profundidad = límite → termina</label></li>
+<li><label><input type="checkbox"> Progreso: índice robot incrementa, profundidad incrementa</label></li>
+</ul>
+</details>
+
+<h2>4. Panel de Monitoreo (Guía § Panel de monitoreo)</h2>
+
+<details open>
+<summary><b>Visualización completa en panel del robot</b></summary>
+
+<table>
+<tr><th>Campo</th><th>Verificación</th></tr>
+<tr><td>Objetivo</td><td>Estado actual legible (ej. "recoger víctima #3")</td></tr>
+<tr><td>Estado</td><td>libre/recoger/entregar/recarga/carga/explorar/desactivado</td></tr>
+<tr><td>Percepción relevante</td><td>Radio visión 3, víctimas detectadas en log</td></tr>
+<tr><td>Ruta</td><td>Pasos restantes, línea amarilla en mapa</td></tr>
+<tr><td>Algoritmo</td><td>Dijkstra o A*</td></tr>
+<tr><td>Heurística</td><td>"Manhattan (admisible, consistente)" o "ninguna (h = 0)"</td></tr>
+<tr><td>Costo de ruta</td><td>Número con 1 decimal</td></tr>
+<tr><td>Nodos expandidos</td><td>Entero ≥ 0</td></tr>
+<tr><td>Duración búsqueda</td><td>ms con 3 decimales</td></tr>
+</table>
+
+<ul class="checklist">
+<li><label><input type="checkbox"> Todos los campos presentes y actualizados en tiempo real</label></li>
+<li><label><input type="checkbox"> Registro de planes y mensajes: muestra últimos 40 eventos</label></li>
+<li><label><input type="checkbox"> Comparación Dijkstra/A* en vivo: búsquedas, nodos medios, ms medios</label></li>
+<li><label><input type="checkbox"> Contadores globales: Tiempo, Rescatadas, Replanes</label></li>
+</ul>
+</details>
+
+<h2>5. Benchmark Reproducible (Guía § Herramientas y experimentación)</h2>
+
+<details open>
+<summary><b>Ejecución y validación de benchmark</b></summary>
+
+<ol>
+<li>Configurar semilla (ej. 2026)</li>
+<li>Pulsar "Ejecutar benchmark"</li>
+<li>Esperar completación (puede tardar 10-30s según dispositivo)</li>
+<li>Verificar tabla con 4 tamaños × 2 algoritmos = 8 filas</li>
+<li>Verificar textarea CSV con cabecera + 40 filas de datos (5 reps × 4 tamaños × 2 algos)</li>
+<li>Copiar CSV → guardar como <code>benchmark_resultados.csv</code> para informe</li>
+</ol>
+
+<ul class="checklist">
+<li><label><input type="checkbox"> Benchmark se ejecuta sin errores</label></li>
+<li><label><input type="checkbox"> Tabla muestra: Mapa, Algoritmo, ms, Nodos, Costo, % Optimalidad</label></li>
+<li><label><input type="checkbox"> CSV incluye: equipo, semilla, tamaño, repetición, algoritmo, ms_medio, nodos_medios, costo_medio</label></li>
+<li><label><input type="checkbox"> Mismos mapas, orígenes, destinos, costos para ambos algoritmos (verificar semilla en CSV)</label></li>
+<li><label><input type="checkbox"> Al menos 5 repeticiones por condición (5 reps × 10 búsquedas = 50 por tamaño/algoritmo)</label></li>
+</ul>
+</details>
+
+<h2>6. Entregables Verificables</h2>
+
+<details open>
+<summary><b>Lista de verificación final</b></summary>
+
+<table>
+<tr><th>Entregable</th><th>Ubicación</th><th>Estado</th></tr>
+<tr><td>Videojuego funcional</td><td><code>src/index.html</code></td><td><label><input type="checkbox"> ✓</label></td></tr>
+<tr><td>Instrucciones de ejecución</td><td><code>README.md</code></td><td><label><input type="checkbox"> ✓</label></td></tr>
+<tr><td>Repositorio código fuente</td><td><code>src/</code>, <code>docs/</code>, <code>tests/</code></td><td><label><input type="checkbox"> ✓</label></td></tr>
+<tr><td>Documentación agentes</td><td><code>docs/arquitectura_agentes.md</code></td><td><label><input type="checkbox"> ✓</label></td></tr>
+<tr><td>Documentación grafos, heurísticas, recursividad</td><td><code>docs/grafos_heuristicas_recursividad.md</code></td><td><label><input type="checkbox"> ✓</label></td></tr>
+<tr><td>Análisis teórico y experimental complejidad</td><td><code>docs/analisis_complejidad.md</code></td><td><label><input type="checkbox"> ✓</label></td></tr>
+<tr><td>Registros y resultados de pruebas</td><td><code>tests/test_acceptance.html</code> + CSV benchmark</td><td><label><input type="checkbox"> ✓</label></td></tr>
+<tr><td>Demostración en vivo</td><td>Abrir <code>src/index.html</code> en navegador</td><td><label><input type="checkbox"> Pendiente</label></td></tr>
+<tr><td>Sustentación</td><td>Basada en docs/ y resultados benchmark</td><td><label><input type="checkbox"> Pendiente</label></td></tr>
+</table>
+</details>
+
+<hr>
+<p style="color:#6b7380;font-size:0.9rem">Generado para Protocolo Centinela - Proyecto Final Algoritmos Computacionales - Fundación Universitaria de Popayán</p>
+</body></html>

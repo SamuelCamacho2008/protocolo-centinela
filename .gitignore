@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Benchmark outputs
+benchmark_resultados_*.csv
+
+# Archivos de referencia locales (no publicar en GitHub Pages)
+Operación Renacer.html
+*.pdf
+run_benchmark.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

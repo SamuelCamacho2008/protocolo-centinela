@@ -1,0 +1,1400 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PROTOCOLO CENTINELA — Red de Rescate Táctico con IA Agéntica</title>
+<style>
+:root{
+  color-scheme:dark light;
+  --bg:#090d16;--bg2:#0f1624;--pn:#121b2d;--pn2:#182338;--tx:#e6edf7;--mu:#8a9bb5;
+  --ln:#23314d;--bd:#070a11;--rd:#1e2940;--un:#111726;
+  --ac:#00e5ff;--ac2:#0091ea;--am:#ffab00;--rk:#ff3d71;--sf:#00e676;--rb:#38bdf8;--ex:#c084fc;--pl:#facc15;
+  --shadow:0 8px 30px rgba(0,0,0,.45);
+}
+:root[data-theme="light"]{
+  --bg:#eef2f7;--bg2:#e3e9f2;--pn:#ffffff;--pn2:#f6f8fc;--tx:#141d2b;--mu:#5b6b82;
+  --ln:#d1dbe8;--bd:#cbd5e1;--rd:#f1f5f9;--un:#dce4ef;
+  --ac:#0284c7;--ac2:#0369a1;--am:#d97706;--rk:#e11d48;--sf:#059669;--rb:#2563eb;--ex:#7c3aed;--pl:#ca8a04;
+  --shadow:0 6px 20px rgba(15,23,42,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:radial-gradient(circle at top right,rgba(0,229,255,.07),transparent 40%),var(--bg);
+  color:var(--tx);font:14px/1.45 "Inter","Segoe UI",system-ui,sans-serif;min-height:100vh;
+}
+header{
+  display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;justify-content:space-between;
+  padding:12px 18px;background:var(--pn);border-bottom:1px solid var(--ln);position:sticky;top:0;z-index:20;
+  backdrop-filter:blur(8px);
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-badge{
+  width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:15px;
+  background:linear-gradient(135deg,var(--ac),var(--ac2));color:#04101f;letter-spacing:-.5px;
+  box-shadow:0 0 14px rgba(0,229,255,.35);
+}
+h1{margin:0;font-size:18px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+.sub{font-size:11px;color:var(--mu);letter-spacing:.6px;text-transform:uppercase}
+#hud{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{
+  background:var(--pn2);border:1px solid var(--ln);border-radius:999px;padding:4px 11px;
+  font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;
+}
+.pill b{color:var(--ac);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px}
+.pill.warn b{color:var(--am)}
+.pill.ok b{color:var(--sf)}
+.shell{display:grid;gap:14px;padding:14px;max-width:1460px;margin:0 auto;grid-template-columns:minmax(0,1fr)}
+@media(min-width:980px){.shell{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}}
+.card{
+  background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:14px;box-shadow:var(--shadow);
+}
+.card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ac);margin:0}
+.canvas-wrap{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--ln);background:var(--bd)}
+canvas{width:100%;height:auto;aspect-ratio:1;display:block;touch-action:manipulation;cursor:crosshair}
+.status-banner{
+  margin-top:10px;padding:8px 12px;border-radius:8px;background:var(--pn2);border:1px solid var(--ln);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-weight:700;
+}
+.status-banner.win{border-color:var(--sf);color:var(--sf)}
+.status-banner.lose{border-color:var(--rk);color:var(--rk)}
+.controls-grid{display:grid;gap:8px;margin-top:10px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.bar-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--mu);letter-spacing:.5px;margin-right:4px}
+button,select,input{
+  font:inherit;font-size:13px;color:var(--tx);background:var(--pn2);border:1px solid var(--ln);
+  border-radius:7px;padding:6px 11px;min-height:34px;transition:all .15s ease;
+}
+button{cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px}
+button:hover:not(:disabled){border-color:var(--ac);transform:translateY(-1px)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.primary{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#04101f;border-color:transparent;font-weight:700}
+button.on{background:var(--am);color:#111;border-color:var(--am)}
+button.danger{border-color:rgba(255,61,113,.45);color:var(--rk)}
+button.danger.on{background:var(--rk);color:#fff;border-color:var(--rk)}
+button.safe-btn{border-color:rgba(0,230,118,.45);color:var(--sf)}
+button.safe-btn.on{background:var(--sf);color:#04101f;border-color:var(--sf)}
+input[type="number"]{width:84px;font-family:monospace}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.player-deck{
+  display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;
+  padding:10px;border-radius:10px;background:var(--pn2);border:1px solid var(--ln);margin-top:10px;
+}
+.dpad{display:grid;grid-template-columns:repeat(3,34px);grid-template-rows:repeat(3,34px);gap:4px}
+.dpad button{padding:0;justify-content:center;min-height:34px;font-size:14px}
+.dpad .empty{visibility:hidden}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--mu);margin-top:10px;padding-top:8px;border-top:1px solid var(--ln)}
+.leg-item{display:inline-flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;font-size:13px}
+dt{color:var(--mu)}
+dd{margin:0;font-weight:600;text-align:right;font-family:"JetBrains Mono",ui-monospace,monospace}
+.badge-ok{color:var(--sf)}
+.badge-err{color:var(--rk)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+td,th{border-bottom:1px solid var(--ln);padding:6px 8px;text-align:right;font-family:"JetBrains Mono",ui-monospace,monospace}
+td:first-child,th:first-child{text-align:left;font-family:inherit;font-weight:600}
+th{color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.sc{overflow-x:auto}
+#log{max-height:210px;overflow:auto;font-size:12.5px;display:flex;flex-direction:column;gap:4px}
+.log-row{padding:4px 8px;border-radius:6px;background:var(--pn2);border-left:3px solid var(--ln);color:var(--tx)}
+.log-row.msg{border-left-color:var(--rb)}
+.log-row.warn{border-left-color:var(--rk)}
+.log-row.ok{border-left-color:var(--sf)}
+.log-row.cmd{border-left-color:var(--pl)}
+.log-row span.t{color:var(--mu);font-family:monospace;margin-right:6px;font-size:11px}
+.agent-tabs{display:flex;gap:5px;flex-wrap:wrap}
+.agent-tabs button{padding:3px 9px;min-height:28px;font-size:12px}
+.agent-tabs button.active{background:var(--ac);color:#04101f;border-color:var(--ac)}
+textarea{
+  width:100%;height:110px;font:12px/1.4 monospace;background:var(--bd);color:var(--tx);
+  border:1px solid var(--ln);border-radius:8px;padding:8px;margin-top:8px;
+}
+details{background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow)}
+details summary{cursor:pointer;font-weight:700;color:var(--ac);font-size:14px}
+details p,details li{color:var(--tx);font-size:13.5px}
+.kbd{
+  display:inline-block;padding:1px 5px;border-radius:4px;border:1px solid var(--ln);
+  background:var(--bg);font:11px monospace;color:var(--ac);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-badge">C9</div>
+    <div>
+      <h1>Protocolo Centinela</h1>
+      <div class="sub">Comando de Extracción Táctica · IA Agéntica &amp; Grafos</div>
+    </div>
+  </div>
+  <div id="hud"></div>
+  <div class="bar" style="margin:0">
+    <button id="themeBtn" title="Cambiar tema claro/oscuro">🌓 Tema</button>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- COLUMNA IZQUIERDA: TABLERO INTERACTIVO Y CONTROLES DEL JUGADOR -->
+  <section class="card">
+    <div class="card-hd">
+      <h2>Mapa Táctico del Complejo</h2>
+      <div class="agent-tabs" id="agentTabs"></div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="cv" width="680" height="680" aria-label="Mapa táctico del complejo subterráneo"></canvas>
+    </div>
+
+    <div id="st" class="status-banner">En pausa</div>
+
+    <!-- CONTROLES DIRECTOS DEL JUGADOR -->
+    <div class="player-deck">
+      <div class="dpad" aria-label="Cruceta del comandante">
+        <span class="empty"></span>
+        <button id="mvU" title="Mover Arriba (W / ↑)">▲</button>
+        <span class="empty"></span>
+        <button id="mvL" title="Mover Izquierda (A / ←)">◀</button>
+        <button id="actSonar" class="primary" title="Pulso de Sonar (Espacio)">📡</button>
+        <button id="mvR" title="Mover Derecha (D / →)">▶</button>
+        <span class="empty"></span>
+        <button id="mvD" title="Mover Abajo (S / ↓)">▼</button>
+        <span class="empty"></span>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--pl);margin-bottom:6px">
+          TU UNIDAD COMANDANTE (CMD-0) · <span id="cmdStatus" style="color:var(--tx)">Listo</span>
+        </div>
+        <div class="bar" style="margin:0">
+          <button id="btnSonar" class="primary">📡 Sonar <span class="kbd">Espacio</span></button>
+          <button id="btnClear" class="safe-btn">🛠 Despejar vía <span class="kbd">E</span></button>
+          <button id="btnRescue">🛟 Rescatar / Asistir <span class="kbd">F</span></button>
+        </div>
+        <div style="font-size:11.5px;color:var(--mu);margin-top:6px">
+          Muévete con <span class="kbd">WASD</span> o <span class="kbd">Flechas</span>. Rescata civiles tú mismo, limpia derrumbes o recarga en el Núcleo Central.
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLES DE SIMULACIÓN Y ALGORITMOS -->
+    <div class="controls-grid">
+      <div class="bar">
+        <span class="bar-label">Simulación</span>
+        <button id="go" class="primary">▶ Iniciar</button>
+        <button id="stp">⏭ Paso</button>
+        <select id="sp" aria-label="Velocidad">
+          <option value="1">1x</option>
+          <option value="2">2x</option>
+          <option value="4" selected>4x</option>
+          <option value="8">8x</option>
+        </select>
+        <select id="al" aria-label="Algoritmo">
+          <option value="A*">A* (Manhattan)</option>
+          <option value="Dijkstra">Dijkstra</option>
+        </select>
+        <select id="md" aria-label="Asignación">
+          <option value="u">Asignación por utilidad (Recursiva)</option>
+          <option value="c">Asignación por cercanía (Greedy)</option>
+        </select>
+      </div>
+
+      <div class="bar">
+        <span class="bar-label">Escenario</span>
+        <select id="sz" aria-label="Tamaño">
+          <option value="17">17 × 17</option>
+          <option value="25" selected>25 × 25</option>
+          <option value="33">33 × 33</option>
+          <option value="41">41 × 41</option>
+        </select>
+        <input id="sd" type="number" value="2026" aria-label="Semilla">
+        <button id="rs">↻ Reiniciar</button>
+      </div>
+
+      <div class="bar">
+        <span class="bar-label">Pruebas de Estrés</span>
+        <button id="rp" class="danger">🌋 Onda sísmica</button>
+        <button id="bl" class="danger">🚧 Colapsar vía (clic mapa)</button>
+        <button id="of" class="danger">⚡ Desactivar unidad elegida</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="leg-item"><span class="dot" style="background:var(--pl)"></span>CMD-0 (Tú)</span>
+      <span class="leg-item"><span class="dot" style="background:var(--ex)"></span>S1-S2 Sondas</span>
+      <span class="leg-item"><span class="dot" style="background:var(--rb)"></span>U1-U3 Extractores</span>
+      <span class="leg-item"><span class="dot" style="background:var(--am)"></span>Núcleo Carga</span>
+      <span class="leg-item"><span class="dot" style="background:var(--sf)"></span>Escotilla Segura</span>
+      <span class="leg-item"><span class="dot" style="background:var(--rk)"></span>Riesgo / Civil</span>
+    </div>
+  </section>
+
+  <!-- COLUMNA DERECHA: PANEL DE MONITOREO DE IA AGÉNTICA -->
+  <aside style="display:grid;gap:14px;align-content:start">
+    <section class="card">
+      <div class="card-hd">
+        <h2>Telemetría del Agente</h2>
+        <span id="acceptBadge" class="pill ok">Aceptación: OK</span>
+      </div>
+      <dl id="pn"></dl>
+    </section>
+
+    <section class="card sc">
+      <div class="card-hd">
+        <h2>Comparación en Vivo: Dijkstra vs A*</h2>
+      </div>
+      <div id="cmp"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-hd">
+        <h2>Bitácora de Decisiones y Mensajes</h2>
+      </div>
+      <div id="log"></div>
+    </section>
+  </aside>
+</div>
+
+<!-- SECCIÓN INFERIOR: BENCHMARK Y DOCUMENTACIÓN TEÓRICA -->
+<div class="shell" style="padding-top:0">
+  <section class="card sc" style="grid-column:1/-1">
+    <div class="card-hd">
+      <h2>Benchmark Experimental Reproducible</h2>
+      <div class="bar" style="margin:0">
+        <button id="bb" class="primary">📊 Ejecutar Benchmark (17, 33, 65, 129)</button>
+        <button id="copyCsv" style="display:none">📋 Copiar CSV</button>
+      </div>
+    </div>
+    <p style="margin:0 0 10px;color:var(--mu);font-size:13px">
+      Evalúa Dijkstra y A* bajo exactamente los mismos grafos, orígenes, destinos y pesos de riesgo (semilla actual, 5 repeticiones × 10 búsquedas por tamaño).
+    </p>
+    <div id="bo"></div>
+  </section>
+
+  <details style="grid-column:1/-1">
+    <summary>Arquitectura de Agentes, Grafos, Heurísticas y Complejidad Teórica</summary>
+    <p><b>1. Modelo de Grafo Ponderado:</b> Los vértices <i>V</i> corresponden a las celdas de galería transitables (sin colapso). Las aristas <i>E</i> conectan los 4 vecinos ortogonales. Entrar a una celda <i>v</i> tiene costo <code>w(v) = 1 + riesgo(v) &ge; 1</code> (pesos estrictamente positivos; los bloqueos retiran el vértice del grafo).</p>
+    <p><b>2. Dijkstra y A* sobre Montículo Binario:</b> Ambos algoritmos comparten la misma implementación de cola de prioridad mínima (<code>Heap</code>) con tiempo <code>O((V + E) log V)</code> y espacio <code>O(V)</code>. En A*, la función de evaluación es <code>f(n) = g(n) + h(n)</code>, siendo <code>h(n) = |x_n - x_t| + |y_n - y_t|</code> (distancia Manhattan). Dado que cada transición cuesta al menos 1, <code>h(n)</code> es <b>admisible</b> (nunca sobreestima el costo real) y <b>consistente</b> (<code>h(u) &le; c(u,v) + h(v)</code>), garantizando optimalidad del camino sin necesidad de reabrir nodos cerrados.</p>
+    <p><b>3. Recursividad Acotada en Asignación Multiagente:</b> La función recursiva <code>asignarOptimoRecursivo(i, usadas, prof, ...)</code> explora combinaciones entre <i>R</i> extractores libres y hasta <i>C &le; 6</i> civiles conocidos maximizando la utilidad <code>U = 1000 + 15&middot;prioridad &minus; 0.5&middot;(costo_ida + costo_evacuación)</code>. Caso base: quedarse sin unidades (<code>i &ge; R</code>) o alcanzar la profundidad máxima <code>min(R, 4)</code>. Complejidad temporal <code>O((C+1)^R)</code> y profundidad de pila acotada en <code>O(R)</code>.</p>
+    <p><b>4. Ciclo Autónomo del Agente e Interacción del Jugador:</b> Cada unidad ejecuta <i>Percepción (radio 3) &rarr; Memoria (mapa visto, civiles, reclamos) &rarr; Planificación (Dijkstra/A*) &rarr; Decisión &rarr; Ejecución &rarr; Evaluación y Replanificación</i>. El jugador opera de forma independiente al Comandante <code>CMD-0</code> (sonar, despeje de vías y rescate directo) sin controlar manualmente las rutas autónomas.</p>
+  </details>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const DX = [1, -1, 0, 0], DY = [0, 0, 1, -1];
+const MAXE = 150, CMD_MAXE = 180;
+const STATS = { 'A*': { n: 0, e: 0, m: 0 }, Dijkstra: { n: 0, e: 0, m: 0 } };
+const PAL = {};
+
+let g, run = false, modeClick = null, last = 0, acc = 0, pulseWave = 0;
+
+function updatePalette() {
+  const s = getComputedStyle(document.documentElement);
+  for (const k of ['bg', 'pn', 'tx', 'mu', 'ln', 'bd', 'rd', 'un', 'ac', 'am', 'rk', 'sf', 'rb', 'ex', 'pl']) {
+    PAL[k] = s.getPropertyValue('--' + k).trim();
+  }
+}
+
+function rng(a) {
+  a >>>= 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+class Heap {
+  constructor() { this.k = []; this.v = []; }
+  push(k, v) {
+    const K = this.k, V = this.v;
+    let i = K.length;
+    K.push(k); V.push(v);
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (K[p] <= k) break;
+      K[i] = K[p]; V[i] = V[p]; i = p;
+    }
+    K[i] = k; V[i] = v;
+  }
+  pop() {
+    const K = this.k, V = this.v, rv = V[0], lk = K.pop(), lv = V.pop(), n = K.length;
+    if (n) {
+      let i = 0;
+      for (;;) {
+        let c = 2 * i + 1;
+        if (c >= n) break;
+        if (c + 1 < n && K[c + 1] < K[c]) c++;
+        if (K[c] >= lk) break;
+        K[i] = K[c]; V[i] = V[c]; i = c;
+      }
+      K[i] = lk; V[i] = lv;
+    }
+    return rv;
+  }
+  get size() { return this.k.length; }
+}
+
+function genMap(n, seed) {
+  const r = rng(seed), N = n * n, road = new Uint8Array(N), mid = ((n - 1) / 2) * n + ((n - 1) / 2);
+  let cnt = 0;
+  for (let i = 0; i < N; i++) {
+    if (i % n % 4 === 0 || ((i / n) | 0) % 4 === 0) { road[i] = 1; cnt++; }
+  }
+  const bfs = () => {
+    const sn = new Uint8Array(N), q = [mid];
+    sn[mid] = 1;
+    let k = 0;
+    while (k < q.length) {
+      const u = q[k++], ux = u % n, uy = (u / n) | 0;
+      for (let d = 0; d < 4; d++) {
+        const vx = ux + DX[d], vy = uy + DY[d];
+        if (vx < 0 || vy < 0 || vx >= n || vy >= n) continue;
+        const v = vy * n + vx;
+        if (road[v] && !sn[v]) { sn[v] = 1; q.push(v); }
+      }
+    }
+    return q.length;
+  };
+  for (let i = 0; i < N; i++) {
+    if (road[i] && ((i % n % 4 === 0) !== (((i / n) | 0) % 4 === 0)) && r() < 0.12) {
+      road[i] = 0; cnt--;
+      if (bfs() !== cnt) { road[i] = 1; cnt++; }
+    }
+  }
+  return road;
+}
+
+// Búsqueda de camino mínimo: Dijkstra (h = 0) y A* (h = Manhattan) sobre el mismo grafo
+function search(G, s, t, algo, record = true) {
+  const n = G.n, N = n * n, t0 = performance.now(), isA = algo === 'A*';
+  const dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+  const H = new Heap(), tx = t % n, ty = (t / n) | 0;
+  const h = i => isA ? Math.abs((i % n) - tx) + Math.abs(((i / n) | 0) - ty) : 0;
+
+  dist[s] = 0;
+  H.push(h(s), s);
+  let exp = 0;
+
+  while (H.size) {
+    const u = H.pop();
+    if (done[u]) continue;
+    done[u] = 1;
+    exp++;
+    if (u === t) break;
+    const ux = u % n, uy = (u / n) | 0;
+    for (let d = 0; d < 4; d++) {
+      const vx = ux + DX[d], vy = uy + DY[d];
+      if (vx < 0 || vy < 0 || vx >= n || vy >= n) continue;
+      const v = vy * n + vx;
+      if (!G.road[v] || G.blocked[v] || done[v]) continue;
+      const nd = dist[u] + 1 + G.risk[v];
+      if (nd < dist[v]) {
+        dist[v] = nd;
+        prev[v] = u;
+        H.push(nd + h(v), v);
+      }
+    }
+  }
+
+  const ms = performance.now() - t0;
+  let path = null;
+  if (dist[t] < Infinity) {
+    path = [];
+    for (let c = t; c !== -1; c = prev[c]) path.push(c);
+    path.reverse();
+  }
+  if (record) {
+    const q = STATS[algo];
+    q.n++; q.e += exp; q.m += ms;
+  }
+  return { path, cost: dist[t], exp, ms, algo };
+}
+
+const man = (a, b) => Math.abs((a % g.n) - (b % g.n)) + Math.abs(((a / g.n) | 0) - ((b / g.n) | 0));
+
+function addLog(text, kind = '') {
+  g.log.unshift({ t: g.t, text, kind });
+  if (g.log.length > 50) g.log.pop();
+}
+
+function init(n, seed) {
+  const road = genMap(n, seed), r = rng(seed ^ 0x9e37), N = n * n, mid = ((n - 1) / 2) * n + ((n - 1) / 2);
+  g = {
+    n, seed, r, road,
+    risk: new Float32Array(N),
+    blocked: new Uint8Array(N),
+    seen: new Uint8Array(N),
+    cells: new Uint8Array(N),
+    skip: new Set(),
+    st: mid,
+    safes: [0, N - 1],
+    t: 0, over: '', win: false, rescued: 0, score: 0,
+    vics: [], log: [],
+    algo: $('#al').value,
+    mode: $('#md').value,
+    sel: 'U1',
+    dirty: true, replans: 0, rc: 0, rd: 0,
+    limit: n * 15,
+    sched: [n * 3, n * 7],
+    player: {
+      id: 'CMD-0', pos: mid, energy: CMD_MAXE, carry: null, sonarCd: 0, cleared: 0, rescuedByPlayer: 0
+    },
+    robots: ['S1', 'S2', 'U1', 'U2', 'U3'].map(id => ({
+      id, type: id[0], pos: mid, energy: MAXE, state: 'libre',
+      path: [], goal: -1, carry: null, victim: null, off: 0, info: null,
+      sec: id === 'S1' ? 0 : 1, lastEvent: 'Despliegue inicial'
+    }))
+  };
+
+  const V = Math.ceil(n / 2.4);
+  g.goal = Math.ceil(V * 0.7);
+  while (g.vics.length < V) {
+    const i = (r() * N) | 0;
+    if (!road[i] || man(i, mid) < 6 || g.safes.some(s => man(i, s) < 4) || g.vics.some(v => v.pos === i)) continue;
+    g.vics.push({ id: g.vics.length + 1, pos: i, prio: 1 + ((r() * 3) | 0), st: 'hidden', by: null });
+  }
+
+  // Baterías tácticas coleccionables para el Comandante
+  let batTarget = Math.max(3, Math.floor(n / 6));
+  for (let tries = 0; tries < 200 && batTarget > 0; tries++) {
+    const i = (r() * N) | 0;
+    if (road[i] && i !== mid && !g.safes.includes(i) && !g.vics.some(v => v.pos === i) && !g.cells[i]) {
+      g.cells[i] = 1;
+      batTarget--;
+    }
+  }
+
+  renderAgentTabs();
+  vision(g.player.pos, 4);
+  visionAll();
+  addLog('Despliegue inicial: CMD-0 y escuadrón listos en el Núcleo Central.', 'ok');
+  ui();
+}
+
+function renderAgentTabs() {
+  $('#agentTabs').innerHTML = g.robots.map(r =>
+    `<button data-sel="${r.id}" class="${g.sel === r.id ? 'active' : ''}">${r.id}</button>`
+  ).join('');
+  document.querySelectorAll('#agentTabs button').forEach(btn => {
+    btn.onclick = () => { g.sel = btn.dataset.sel; renderAgentTabs(); ui(); draw(); };
+  });
+}
+
+function vision(pos, rad) {
+  const n = g.n, x = pos % n, y = (pos / n) | 0;
+  for (let dy = -rad; dy <= rad; dy++) {
+    for (let dx = -rad; dx <= rad; dx++) {
+      const a = x + dx, b = y + dy;
+      if (a >= 0 && b >= 0 && a < n && b < n && Math.abs(dx) + Math.abs(dy) <= rad + 1) {
+        g.seen[b * n + a] = 1;
+      }
+    }
+  }
+}
+
+function visionAll() {
+  vision(g.player.pos, 3);
+  for (const r of g.robots) {
+    if (!r.off) vision(r.pos, 3);
+  }
+  for (const v of g.vics) {
+    if (v.st === 'hidden' && g.seen[v.pos]) {
+      v.st = 'known';
+      g.dirty = true;
+      addLog(`Sensor detecta civil #${v.id} (Prioridad ${v.prio}).`, 'ok');
+    }
+  }
+}
+
+function goCharge(r) {
+  const q = search(g, r.pos, g.st, g.algo);
+  if (q.path) {
+    r.state = 'recarga';
+    r.path = q.path.slice(1);
+    r.goal = g.st;
+    r.info = q;
+    r.lastEvent = 'Rumbo a recarga en Núcleo';
+    if (!r.path.length) arrive(r);
+  }
+}
+
+function goSafe(r) {
+  let b = null;
+  for (const s of g.safes) {
+    const q = search(g, r.pos, s, g.algo);
+    if (q.path && (!b || q.cost < b.cost)) b = q;
+  }
+  if (b) {
+    r.path = b.path.slice(1);
+    r.goal = b.path[b.path.length - 1];
+    r.info = b;
+    r.lastEvent = 'Evacuando civil hacia Escotilla';
+    if (!r.path.length) arrive(r);
+  } else {
+    r.path = [];
+    r.goal = -1;
+  }
+}
+
+function release(r, why) {
+  const v = r.victim;
+  if (v) {
+    v.st = 'known';
+    v.by = null;
+    addLog(`Msg ${r.id}→Escuadrón: libero civil #${v.id} (${why}).`, 'msg');
+  }
+  r.victim = null;
+  r.state = 'libre';
+  r.path = [];
+  r.goal = -1;
+  r.lastEvent = `Liberación: ${why}`;
+  g.dirty = true;
+}
+
+function arrive(r) {
+  const v = r.victim;
+  if (r.state === 'recoger') {
+    r.carry = v;
+    v.st = 'carry';
+    r.state = 'entregar';
+    goSafe(r);
+  } else if (r.state === 'entregar') {
+    v.st = 'ok';
+    g.rescued++;
+    g.score += 100 * v.prio;
+    r.carry = null;
+    r.victim = null;
+    r.state = 'libre';
+    r.goal = -1;
+    r.lastEvent = `Civil #${v.id} evacuado`;
+    addLog(`${r.id} evacúa al civil #${v.id} en escotilla segura (+${100 * v.prio} pts).`, 'ok');
+    g.dirty = true;
+  } else if (r.state === 'recarga') {
+    r.state = 'carga';
+    r.lastEvent = 'Recargando baterías';
+  } else {
+    r.state = 'libre';
+    r.goal = -1;
+  }
+}
+
+function replan(r) {
+  if (r.goal < 0) return;
+  const q = search(g, r.pos, r.goal, g.algo);
+  g.replans++;
+  if (q.path) {
+    r.path = q.path.slice(1);
+    r.info = q;
+    r.lastEvent = `Replan ${g.algo} (costo ${q.cost.toFixed(1)})`;
+    addLog(`${r.id} recalcula ruta con ${g.algo} (costo ${q.cost.toFixed(1)}).`, 'msg');
+  } else {
+    addLog(`${r.id} sin ruta disponible hacia su objetivo.`, 'warn');
+    if (r.state === 'recoger') release(r, 'vía inaccesible');
+    else if (r.state === 'entregar') goSafe(r);
+    else { r.state = 'libre'; r.path = []; r.goal = -1; }
+  }
+}
+
+function disable(r, why) {
+  if (r.off) return;
+  r.off = 1;
+  r.path = [];
+  r.lastEvent = `Desactivado (${why})`;
+  addLog(`ALERTA: ${r.id} fuera de servicio (${why}).`, 'warn');
+  if (r.carry) {
+    const v = r.carry;
+    v.st = 'known';
+    v.by = null;
+    v.pos = r.pos;
+    r.carry = null;
+    addLog(`Msg emergencia: civil #${v.id} requiere reasignación inmediata.`, 'warn');
+  } else if (r.victim) {
+    release(r, 'unidad caída');
+  }
+  g.dirty = true;
+}
+
+function revalidate() {
+  for (const r of g.robots) {
+    if (!r.off && r.path.length && r.path.some(c => g.blocked[c] || g.risk[c] >= 4)) {
+      replan(r);
+    }
+  }
+}
+
+function collapse(i, ring) {
+  const n = g.n;
+  g.blocked[i] = 1;
+  g.risk[i] = 0;
+  if (ring) {
+    const x = i % n, y = (i / n) | 0;
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const a = x + dx, b = y + dy, j = b * n + a;
+        if (a >= 0 && b >= 0 && a < n && b < n && Math.abs(dx) + Math.abs(dy) <= 2 && g.road[j] && !g.blocked[j]) {
+          g.risk[j] = Math.min(8, g.risk[j] + 4);
+        }
+      }
+    }
+  }
+  for (const r of g.robots) {
+    if (!r.off && r.pos === i) disable(r, 'atrapado en colapso');
+  }
+  revalidate();
+  g.dirty = true;
+}
+
+function replica() {
+  for (let k = 0; k < 45; k++) {
+    const i = (g.r() * g.n * g.n) | 0;
+    if (!g.road[i] || g.blocked[i] || i === g.st || i === g.player.pos || g.safes.includes(i) ||
+        g.vics.some(v => v.pos === i && v.st !== 'ok') || g.robots.some(r => r.pos === i)) continue;
+    addLog('ONDA SÍSMICA: galería colapsada y fuga térmica activa.', 'warn');
+    collapse(i, true);
+    return;
+  }
+}
+
+function blockCell(i) {
+  if (!g.road[i] || g.blocked[i] || i === g.st || i === g.player.pos || g.safes.includes(i) ||
+      g.vics.some(v => v.pos === i && v.st !== 'ok')) {
+    addLog('Esa celda no puede colapsarse (Núcleo, Escotilla o posición ocupada).', 'warn');
+    ui();
+    return;
+  }
+  addLog('Operador colapsó una galería manualmente.', 'warn');
+  collapse(i, false);
+  ui();
+  draw();
+}
+
+function clearCell(i) {
+  if (!g.road[i] || (!g.blocked[i] && g.risk[i] === 0)) return false;
+  if (g.player.energy < 10) {
+    addLog('CMD-0: energía insuficiente para despejar (requiere 10).', 'warn');
+    return false;
+  }
+  g.player.energy -= 10;
+  g.blocked[i] = 0;
+  g.risk[i] = 0;
+  g.player.cleared++;
+  g.score += 35;
+  addLog('CMD-0 despejó escombros y estabilizó la vía (+35 pts).', 'cmd');
+  g.skip.clear();
+  revalidate();
+  g.dirty = true;
+  return true;
+}
+
+function pickTarget(r) {
+  const n = g.n;
+  let b = -1, bd = 1e9;
+  for (const pass of [1, 0]) {
+    for (let i = 0; i < n * n; i++) {
+      if (!g.road[i] || g.seen[i] || g.blocked[i] || g.skip.has(i)) continue;
+      if (pass && ((i % n < n / 2) !== (r.sec === 0))) continue;
+      const d = man(i, r.pos);
+      if (d < bd) { bd = d; b = i; }
+    }
+    if (b >= 0) break;
+  }
+  return b;
+}
+
+function idle(r) {
+  if (r.state === 'entregar') return goSafe(r);
+  if (r.state === 'recoger') {
+    if (r.pos === r.victim.pos) return arrive(r);
+    return replan(r);
+  }
+  if (r.state === 'recarga') {
+    if (r.pos === g.st) return arrive(r);
+    return goCharge(r);
+  }
+  if (r.pos === g.st && r.energy < MAXE) { r.state = 'carga'; return; }
+  if (r.energy < (r.type === 'U' ? 75 : 60) && r.pos !== g.st) return goCharge(r);
+  if (r.type === 'S') {
+    const t = pickTarget(r);
+    if (t < 0) return;
+    const q = search(g, r.pos, t, g.algo);
+    if (!q.path) { g.skip.add(t); return; }
+    r.state = 'explorar';
+    r.path = q.path.slice(1);
+    r.goal = t;
+    r.info = q;
+    r.lastEvent = `Escaneando sector ${r.sec === 0 ? 'Oeste' : 'Este'}`;
+  }
+}
+
+function act(r) {
+  if (r.state === 'carga') {
+    r.energy = Math.min(MAXE, r.energy + 12);
+    if (r.energy >= MAXE) { r.state = 'libre'; r.goal = -1; r.lastEvent = 'Carga completa'; }
+    return;
+  }
+  if (r.path.length) {
+    const nx = r.path[0];
+    if (g.blocked[nx]) return replan(r);
+    if (r.state === 'recoger') {
+      const ms = Math.min(...g.safes.map(s => man(r.victim.pos, s)));
+      const sf = g.safes.reduce((a, s) => man(r.victim.pos, s) < man(r.victim.pos, a) ? s : a);
+      if (r.energy < r.path.length + 1.25 * ms + man(sf, g.st) + 2) {
+        addLog(`${r.id} solicita recarga: batería crítica.`, 'warn');
+        release(r, 'energía crítica');
+        return goCharge(r);
+      }
+    }
+    if (r.state === 'explorar' && r.energy < 45) {
+      addLog(`${r.id} aborta escaneo: batería baja.`, 'warn');
+      r.path = [];
+      return goCharge(r);
+    }
+    r.path.shift();
+    r.pos = nx;
+    r.energy -= r.carry ? 1.25 : 1;
+    if (r.carry) r.carry.pos = nx;
+    if (r.energy <= 0) { r.energy = 0; return disable(r, 'batería agotada'); }
+    if (!r.path.length) arrive(r);
+    return;
+  }
+  idle(r);
+}
+
+// Recursión acotada: busca la mejor combinación robot-víctima
+function asignarOptimoRecursivo(i, used, d, u, R, C, L) {
+  g.rc++;
+  g.rd = Math.max(g.rd, d);
+  if (i >= R || d >= L) return { s: 0, p: [] }; // Caso base
+  let b = asignarOptimoRecursivo(i + 1, used, d, u, R, C, L);
+  for (let j = 0; j < C; j++) {
+    if ((used & (1 << j)) || u[i][j] < 0) continue;
+    const sub = asignarOptimoRecursivo(i + 1, used | (1 << j), d + 1, u, R, C, L);
+    const s = u[i][j] + sub.s;
+    if (s > b.s) b = { s, p: [[i, j]].concat(sub.p) };
+  }
+  return b;
+}
+
+function assign() {
+  const fr = g.robots.filter(r => r.type === 'U' && !r.off && r.state === 'libre' && r.energy >= 75 && !r.path.length);
+  const K = g.vics.filter(v => v.st === 'known');
+  if (!fr.length || !K.length) return;
+
+  K.sort((a, b) => (b.prio * 8 - Math.min(...fr.map(r => man(r.pos, b.pos)))) - (a.prio * 8 - Math.min(...fr.map(r => man(r.pos, a.pos)))));
+  const C = K.slice(0, 6), R = fr.length, u = [], c1 = [];
+  const sc = C.map(v => {
+    let b = null, bs = -1;
+    for (const s of g.safes) {
+      const q = search(g, v.pos, s, g.algo);
+      if (q.path && (!b || q.cost < b.cost)) { b = q; bs = s; }
+    }
+    return b && { q: b, s: bs };
+  });
+
+  for (let i = 0; i < R; i++) {
+    u.push([]); c1.push([]);
+    for (let j = 0; j < C.length; j++) {
+      const q = search(g, fr[i].pos, C[j].pos, g.algo), z = sc[j];
+      c1[i].push(q);
+      if (!q.path || !z) { u[i].push(-1); continue; }
+      const need = q.path.length + 1.25 * z.q.path.length + man(z.s, g.st) + 4;
+      u[i].push(fr[i].energy < need ? -1 : 1000 + 15 * C[j].prio - 0.5 * (q.cost + z.q.cost));
+    }
+  }
+
+  g.rc = 0; g.rd = 0;
+  let plan = [];
+  if (g.mode === 'u') {
+    plan = asignarOptimoRecursivo(0, 0, 0, u, R, C.length, Math.min(R, 4)).p;
+  } else {
+    const used = new Set();
+    for (let i = 0; i < R; i++) {
+      let bj = -1, bc = 1e9;
+      for (let j = 0; j < C.length; j++) {
+        if (!used.has(j) && u[i][j] >= 0 && c1[i][j].cost < bc) { bc = c1[i][j].cost; bj = j; }
+      }
+      if (bj >= 0) { used.add(bj); plan.push([i, bj]); }
+    }
+  }
+
+  for (const [i, j] of plan) {
+    const r = fr[i], v = C[j], q = c1[i][j];
+    r.state = 'recoger';
+    r.victim = v;
+    v.st = 'claimed';
+    v.by = r.id;
+    r.path = q.path.slice(1);
+    r.goal = v.pos;
+    r.info = q;
+    r.lastEvent = `Asignado civil #${v.id} (P${v.prio})`;
+    addLog(`Msg ${r.id}: reclamo civil #${v.id} (P${v.prio}, costo ${q.cost.toFixed(1)}, ${g.mode === 'u' ? 'utilidad' : 'cercanía'}).`, 'msg');
+    if (!r.path.length) arrive(r);
+  }
+}
+
+// ACCIONES DEL JUGADOR (CMD-0)
+function movePlayer(dx, dy) {
+  if (g.over) return;
+  if (!run) { run = true; $('#go').textContent = '⏸ Pausar'; }
+  const p = g.player, n = g.n;
+  const x = (p.pos % n) + dx, y = ((p.pos / n) | 0) + dy;
+  if (x < 0 || y < 0 || x >= n || y >= n) return;
+  const nx = y * n + x;
+  if (!g.road[nx] || g.blocked[nx]) {
+    addLog('CMD-0: ruta bloqueada. Usa [E] para despejar escombros.', 'warn');
+    ui(); return;
+  }
+  if (p.energy <= 0) {
+    addLog('CMD-0 sin energía. Recarga en el Núcleo o recoge células.', 'warn');
+    ui(); return;
+  }
+  p.pos = nx;
+  p.energy = Math.max(0, p.energy - (p.carry ? 1.25 : 1));
+  if (p.carry) p.carry.pos = nx;
+
+  if (g.cells[nx]) {
+    g.cells[nx] = 0;
+    p.energy = Math.min(CMD_MAXE, p.energy + 40);
+    g.score += 25;
+    addLog('CMD-0 recolectó célula de energía (+40 energía, +25 pts).', 'cmd');
+  }
+  if (nx === g.st) {
+    p.energy = CMD_MAXE;
+  }
+  if (p.carry && g.safes.includes(nx)) {
+    p.carry.st = 'ok';
+    g.rescued++;
+    p.rescuedByPlayer++;
+    g.score += 150 * p.carry.prio;
+    addLog(`CMD-0 evacuó directamente al civil #${p.carry.id} (+${150 * p.carry.prio} pts)!`, 'ok');
+    p.carry = null;
+    checkEnd();
+  }
+  vision(p.pos, 3);
+  visionAll();
+  ui();
+  draw();
+}
+
+function triggerSonar() {
+  if (g.over) return;
+  if (g.player.sonarCd > 0) {
+    addLog(`Sonar recargando (${g.player.sonarCd} ticks).`, 'warn');
+    ui(); return;
+  }
+  g.player.sonarCd = 6;
+  pulseWave = 1.0;
+  vision(g.player.pos, 5);
+  let found = 0;
+  for (const v of g.vics) {
+    if (v.st === 'hidden' && man(v.pos, g.player.pos) <= 6) {
+      g.seen[v.pos] = 1;
+      v.st = 'known';
+      g.dirty = true;
+      found++;
+    }
+  }
+  addLog(`CMD-0 emitió Pulso de Sonar (R=5): ${found} nuevos civiles localizados.`, 'cmd');
+  ui();
+  draw();
+}
+
+function playerContextAction() {
+  if (g.over) return;
+  const p = g.player;
+  // 1. Si no lleva civil, buscar civil cercano (dist <= 1) para rescatar
+  if (!p.carry) {
+    const v = g.vics.find(x => (x.st === 'known' || x.st === 'hidden' || x.st === 'claimed') && man(x.pos, p.pos) <= 1);
+    if (v) {
+      if (v.st === 'claimed' && v.by) {
+        const holder = g.robots.find(r => r.id === v.by);
+        if (holder) {
+          holder.victim = null; holder.state = 'libre'; holder.path = []; holder.goal = -1;
+          holder.lastEvent = 'Relevado por CMD-0';
+          addLog(`CMD-0 releva a ${holder.id} y recoge al civil #${v.id}.`, 'cmd');
+        }
+      } else {
+        addLog(`CMD-0 recoge al civil #${v.id} (llévalo a una Escotilla verde).`, 'cmd');
+      }
+      v.st = 'carry';
+      v.by = 'CMD-0';
+      v.pos = p.pos;
+      p.carry = v;
+      g.dirty = true;
+      ui(); draw();
+      return;
+    }
+  }
+  // 2. Asistir energía a robot cercano (dist <= 1)
+  const ally = g.robots.find(r => !r.off && man(r.pos, p.pos) <= 1 && r.energy < MAXE - 10);
+  if (ally && p.energy >= 35) {
+    const gift = Math.min(35, MAXE - ally.energy);
+    p.energy -= gift;
+    ally.energy += gift;
+    g.score += 20;
+    addLog(`CMD-0 transfirió +${gift.toFixed(0)} energía a ${ally.id} (+20 pts).`, 'cmd');
+    ui(); draw();
+    return;
+  }
+  addLog('CMD-0: acércate a un civil (dist ≤ 1) para rescatarlo o a un robot para recargarlo.', 'cmd');
+  ui();
+}
+
+function playerClearNearby() {
+  if (g.over) return;
+  const p = g.player, n = g.n, x = p.pos % n, y = (p.pos / n) | 0;
+  for (let d = 0; d < 4; d++) {
+    const vx = x + DX[d], vy = y + DY[d];
+    if (vx < 0 || vy < 0 || vx >= n || vy >= n) continue;
+    const j = vy * n + vx;
+    if (g.blocked[j] || g.risk[j] > 0) {
+      if (clearCell(j)) { ui(); draw(); return true; }
+    }
+  }
+  if (g.risk[p.pos] > 0 && clearCell(p.pos)) { ui(); draw(); return true; }
+  return false;
+}
+
+function checkEnd() {
+  if (g.rescued >= g.goal) {
+    g.over = `¡MISIÓN CUMPLIDA! Evacuados ${g.rescued} civiles · Puntuación: ${g.score}`;
+    g.win = true;
+  } else if (g.t >= g.limit) {
+    g.over = 'TIEMPO AGOTADO: el complejo colapsó antes de completar la cuota.';
+    g.win = false;
+  } else if (g.robots.filter(r => r.type === 'U' && !r.off).length === 0 && !g.player.carry && g.player.energy <= 0) {
+    g.over = 'SIN CAPACIDAD OPERATIVA: todas las unidades de extracción cayeron.';
+    g.win = false;
+  }
+  if (g.over) {
+    run = false;
+    $('#go').textContent = '▶ Iniciar';
+  }
+}
+
+function tick() {
+  if (g.over) return;
+  g.t++;
+  if (g.player.sonarCd > 0) g.player.sonarCd--;
+  if (g.player.pos === g.st) g.player.energy = Math.min(CMD_MAXE, g.player.energy + 10);
+
+  if (g.sched.length && g.t >= g.sched[0]) {
+    g.sched.shift();
+    replica();
+  }
+  for (const r of g.robots) {
+    if (!r.off) act(r);
+  }
+  visionAll();
+  if (g.dirty || g.t % 5 === 0) {
+    g.dirty = false;
+    assign();
+  }
+  checkEnd();
+  ui();
+}
+
+function ui() {
+  const r = g.robots.find(x => x.id === g.sel) || g.robots[0];
+  const q = r.info;
+  const objNames = {
+    recoger: `Recoger civil #${r.victim ? r.victim.id : '?'}`,
+    entregar: 'Evacuar a Escotilla Segura',
+    recarga: 'Retornar a Núcleo Central',
+    carga: 'Recargando energía',
+    explorar: `Explorar sector ${r.sec === 0 ? 'Oeste' : 'Este'}`,
+    libre: 'En espera de asignación'
+  };
+
+  const dup = g.vics.filter(v => g.robots.filter(x => x.victim === v && !x.off).length > 1).length;
+  const bad = g.robots.filter(x => x.path.some(c => g.blocked[c])).length;
+
+  $('#hud').innerHTML =
+    `<span class="pill warn">⏱ Tiempo <b>${g.limit - g.t}</b></span>` +
+    `<span class="pill ok">🛟 Evacuados <b>${g.rescued}/${g.goal}</b></span>` +
+    `<span class="pill">⚡ CMD-0 <b>${g.player.energy.toFixed(0)}/${CMD_MAXE}</b></span>` +
+    `<span class="pill">🏆 Puntos <b>${g.score}</b></span>` +
+    `<span class="pill">🔄 Replanes <b>${g.replans}</b></span>`;
+
+  const stEl = $('#st');
+  stEl.textContent = g.over || (run ? 'OPERACIÓN EN CURSO · Controla a CMD-0 y supervisa la flota' : 'EN PAUSA · Pulsa Iniciar o muévete con WASD');
+  stEl.className = 'status-banner' + (g.over ? (g.win ? ' win' : ' lose') : '');
+
+  $('#cmdStatus').textContent = g.player.carry
+    ? `Llevando civil #${pCarryId()} → Ve a una Escotilla verde`
+    : (g.player.sonarCd > 0 ? `Sonar en ${g.player.sonarCd}t` : 'Sonar listo');
+
+  const ab = $('#acceptBadge');
+  const acceptOk = dup === 0 && bad === 0;
+  ab.textContent = acceptOk ? 'Aceptación: 0 errores' : `Alerta: dup=${dup} blq=${bad}`;
+  ab.className = 'pill ' + (acceptOk ? 'ok' : 'warn');
+
+  $('#pn').innerHTML = [
+    ['Unidad', `${r.id} (${r.type === 'S' ? 'Sonda Recon' : 'Extractor'})`],
+    ['Estado', r.off ? 'DESACTIVADA' : r.state.toUpperCase()],
+    ['Objetivo', r.off ? '—' : objNames[r.state]],
+    ['Último evento', r.lastEvent],
+    ['Energía', `${r.energy.toFixed(0)} / ${MAXE}`],
+    ['Ruta restante', `${r.path.length} celdas`],
+    ['Algoritmo', q ? q.algo : '—'],
+    ['Heurística', q ? (q.algo === 'A*' ? 'Manhattan (admisible, consistente)' : 'Nula (h = 0)') : '—'],
+    ['Costo de ruta', q ? q.cost.toFixed(1) : '—'],
+    ['Nodos expandidos', q ? q.exp : '—'],
+    ['Duración búsqueda', q ? `${q.ms.toFixed(3)} ms` : '—'],
+    ['Recursión', `${g.rc} llamadas · prof. ${g.rd}`],
+    ['Tareas duplicadas', `<span class="${dup ? 'badge-err' : 'badge-ok'}">${dup}</span>`],
+    ['Rutas bloqueadas', `<span class="${bad ? 'badge-err' : 'badge-ok'}">${bad}</span>`]
+  ].map(x => `<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('');
+
+  $('#cmp').innerHTML =
+    '<table><tr><th>Algoritmo</th><th>Búsquedas</th><th>Nodos medios</th><th>ms medios</th></tr>' +
+    ['Dijkstra', 'A*'].map(k => {
+      const s = STATS[k];
+      return `<tr><td>${k}</td><td>${s.n}</td><td>${s.n ? (s.e / s.n).toFixed(1) : '—'}</td><td>${s.n ? (s.m / s.n).toFixed(3) : '—'}</td></tr>`;
+    }).join('') + '</table>';
+
+  $('#log').innerHTML = g.log.map(x =>
+    `<div class="log-row ${x.kind}"><span class="t">t${x.t}</span>${x.text}</div>`
+  ).join('');
+}
+function pCarryId() { return g.player.carry ? g.player.carry.id : ''; }
+
+function draw() {
+  const cv = $('#cv'), c = cv.getContext('2d'), W = cv.width, n = g.n, s = W / n;
+  const cx = i => ((i % n) + 0.5) * s, cy = i => (((i / n) | 0) + 0.5) * s;
+
+  c.fillStyle = PAL.bd;
+  c.fillRect(0, 0, W, W);
+
+  // Celdas del mapa
+  for (let i = 0; i < n * n; i++) {
+    if (!g.road[i]) continue;
+    const x = (i % n) * s, y = ((i / n) | 0) * s;
+    c.fillStyle = g.seen[i] ? PAL.rd : PAL.un;
+    c.fillRect(x, y, s + 0.6, s + 0.6);
+
+    if (g.risk[i] && g.seen[i]) {
+      c.fillStyle = PAL.rk;
+      c.globalAlpha = Math.min(0.6, g.risk[i] * 0.1);
+      c.fillRect(x, y, s, s);
+      c.globalAlpha = 1;
+    }
+    if (g.blocked[i]) {
+      c.fillStyle = '#090d16';
+      c.fillRect(x, y, s, s);
+      c.strokeStyle = PAL.rk;
+      c.lineWidth = Math.max(1.5, s * 0.12);
+      c.beginPath();
+      c.moveTo(x + 2, y + 2); c.lineTo(x + s - 2, y + s - 2);
+      c.moveTo(x + s - 2, y + 2); c.lineTo(x + 2, y + s - 2);
+      c.stroke();
+    }
+    if (g.cells[i] && g.seen[i]) {
+      c.fillStyle = PAL.ac;
+      c.beginPath();
+      c.arc(x + s * 0.5, y + s * 0.5, s * 0.18, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+
+  // Núcleo Central y Escotillas Seguras
+  c.lineWidth = 2.5;
+  c.strokeStyle = PAL.am;
+  c.strokeRect(cx(g.st) - s * 0.65, cy(g.st) - s * 0.65, s * 1.3, s * 1.3);
+  c.strokeStyle = PAL.sf;
+  for (const z of g.safes) {
+    c.strokeRect(cx(z) - s * 0.65, cy(z) - s * 0.65, s * 1.3, s * 1.3);
+  }
+
+  // Ruta del agente seleccionado
+  const sel = g.robots.find(x => x.id === g.sel);
+  if (sel && sel.path.length) {
+    c.save();
+    c.strokeStyle = PAL.ac;
+    c.lineWidth = Math.max(2, s * 0.14);
+    c.setLineDash([4, 4]);
+    c.beginPath();
+    c.moveTo(cx(sel.pos), cy(sel.pos));
+    for (const p of sel.path) c.lineTo(cx(p), cy(p));
+    c.stroke();
+    c.restore();
+  }
+
+  // Onda de sonar animada
+  if (pulseWave > 0.02) {
+    c.save();
+    c.strokeStyle = PAL.ac;
+    c.globalAlpha = pulseWave * 0.7;
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(cx(g.player.pos), cy(g.player.pos), (1 - pulseWave) * s * 6 + s, 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
+    pulseWave *= 0.9;
+  }
+
+  // Civiles descubiertos
+  for (const v of g.vics) {
+    if (v.st === 'hidden' || v.st === 'ok' || v.st === 'carry') continue;
+    c.fillStyle = v.prio === 3 ? PAL.rk : v.prio === 2 ? PAL.am : PAL.mu;
+    c.beginPath();
+    c.arc(cx(v.pos), cy(v.pos), s * (0.2 + 0.055 * v.prio), 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = PAL.tx;
+    c.lineWidth = v.st === 'claimed' ? 2.5 : 1;
+    c.stroke();
+  }
+
+  // Robots autónomos
+  c.font = `bold ${Math.max(9, s * 0.45)}px sans-serif`;
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  for (const r of g.robots) {
+    const x = cx(r.pos), y = cy(r.pos), h = s * 0.38;
+    c.fillStyle = r.off ? PAL.mu : r.type === 'S' ? PAL.ex : PAL.rb;
+    c.beginPath();
+    if (r.type === 'S') {
+      // Diamante para Sondas
+      c.moveTo(x, y - h * 1.15); c.lineTo(x + h * 1.15, y); c.lineTo(x, y + h * 1.15); c.lineTo(x - h * 1.15, y);
+      c.closePath();
+    } else {
+      c.rect(x - h, y - h, 2 * h, 2 * h);
+    }
+    c.fill();
+    if (r.id === g.sel) {
+      c.strokeStyle = PAL.tx;
+      c.lineWidth = 2.5;
+      c.stroke();
+    }
+    if (r.carry) {
+      c.fillStyle = PAL.rk;
+      c.beginPath();
+      c.arc(x, y - h - 3, s * 0.18, 0, Math.PI * 2);
+      c.fill();
+    }
+    if (s >= 13) {
+      c.fillStyle = '#07101f';
+      c.fillText(r.id[1], x, y + 0.5);
+    }
+  }
+
+  // Unidad del Jugador CMD-0 (Hexágono dorado brillante)
+  const px = cx(g.player.pos), py = cy(g.player.pos), pr = s * 0.46;
+  c.fillStyle = PAL.pl;
+  c.beginPath();
+  for (let k = 0; k < 6; k++) {
+    const ang = (Math.PI / 3) * k - Math.PI / 6;
+    const vx = px + Math.cos(ang) * pr, vy = py + Math.sin(ang) * pr;
+    if (k === 0) c.moveTo(vx, vy); else c.lineTo(vx, vy);
+  }
+  c.closePath();
+  c.fill();
+  c.strokeStyle = '#04101f';
+  c.lineWidth = 2;
+  c.stroke();
+  if (g.player.carry) {
+    c.fillStyle = PAL.sf;
+    c.beginPath();
+    c.arc(px, py - pr - 3, s * 0.2, 0, Math.PI * 2);
+    c.fill();
+  }
+  if (s >= 13) {
+    c.fillStyle = '#04101f';
+    c.fillText('★', px, py + 0.5);
+  }
+}
+
+// INTERACCIÓN CANVAS Y TECLADO
+$('#cv').onclick = e => {
+  const b = e.target.getBoundingClientRect(), n = g.n;
+  const x = Math.floor(((e.clientX - b.left) / b.width) * n);
+  const y = Math.floor(((e.clientY - b.top) / b.height) * n);
+  const cell = y * n + x;
+
+  if (modeClick === 'block') return blockCell(cell);
+  if (modeClick === 'clear') {
+    if (man(cell, g.player.pos) <= 2 && clearCell(cell)) {
+      modeClick = null;
+      $('#btnClear').classList.remove('on');
+      ui(); draw();
+    } else {
+      addLog('Para despejar con clic, acércate (distancia ≤ 2) a la vía afectada.', 'warn');
+      ui();
+    }
+    return;
+  }
+  const hit = g.robots.find(r => Math.abs((r.pos % n) - x) <= 1 && Math.abs(((r.pos / n) | 0) - y) <= 1);
+  if (hit) {
+    g.sel = hit.id;
+    renderAgentTabs();
+    ui(); draw();
+    return;
+  }
+  // Clic en celda adyacente al jugador lo mueve 1 paso
+  const px = g.player.pos % n, py = (g.player.pos / n) | 0;
+  if (Math.abs(x - px) + Math.abs(y - py) === 1) {
+    movePlayer(x - px, y - py);
+  }
+};
+
+window.addEventListener('keydown', e => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  if (k === 'w' || k === 'arrowup') movePlayer(0, -1);
+  else if (k === 's' || k === 'arrowdown') movePlayer(0, 1);
+  else if (k === 'a' || k === 'arrowleft') movePlayer(-1, 0);
+  else if (k === 'd' || k === 'arrowright') movePlayer(1, 0);
+  else if (k === ' ') triggerSonar();
+  else if (k === 'f') playerContextAction();
+  else if (k === 'e') {
+    if (!playerClearNearby()) {
+      modeClick = modeClick === 'clear' ? null : 'clear';
+      $('#btnClear').classList.toggle('on', modeClick === 'clear');
+      $('#bl').classList.remove('on');
+    }
+  }
+});
+
+$('#mvU').onclick = () => movePlayer(0, -1);
+$('#mvD').onclick = () => movePlayer(0, 1);
+$('#mvL').onclick = () => movePlayer(-1, 0);
+$('#mvR').onclick = () => movePlayer(1, 0);
+$('#actSonar').onclick = triggerSonar;
+$('#btnSonar').onclick = triggerSonar;
+$('#btnRescue').onclick = playerContextAction;
+$('#btnClear').onclick = () => {
+  if (!playerClearNearby()) {
+    modeClick = modeClick === 'clear' ? null : 'clear';
+    $('#btnClear').classList.toggle('on', modeClick === 'clear');
+    $('#bl').classList.remove('on');
+  }
+};
+
+$('#go').onclick = () => {
+  if (g.over) return;
+  run = !run;
+  $('#go').textContent = run ? '⏸ Pausar' : '▶ Iniciar';
+  ui();
+};
+$('#stp').onclick = () => { tick(); draw(); };
+$('#rs').onclick = () => {
+  run = false; modeClick = null;
+  $('#bl').classList.remove('on');
+  $('#btnClear').classList.remove('on');
+  $('#go').textContent = '▶ Iniciar';
+  STATS['A*'] = { n: 0, e: 0, m: 0 };
+  STATS.Dijkstra = { n: 0, e: 0, m: 0 };
+  updatePalette();
+  init(+$('#sz').value, +$('#sd').value || 1);
+  draw();
+};
+$('#al').onchange = e => { g.algo = e.target.value; addLog(`Algoritmo cambiado a ${g.algo}.`, 'msg'); ui(); };
+$('#md').onchange = e => { g.mode = e.target.value; g.dirty = true; addLog(`Estrategia de asignación: ${g.mode === 'u' ? 'Utilidad Recursiva' : 'Cercanía Greedy'}.`, 'msg'); ui(); };
+$('#rp').onclick = () => { if (!g.over) { replica(); ui(); draw(); } };
+$('#bl').onclick = () => {
+  modeClick = modeClick === 'block' ? null : 'block';
+  $('#bl').classList.toggle('on', modeClick === 'block');
+  $('#btnClear').classList.remove('on');
+};
+$('#of').onclick = () => {
+  const r = g.robots.find(x => x.id === g.sel);
+  if (!g.over && r && !r.off) { disable(r, 'desactivado por el operador'); ui(); draw(); }
+};
+$('#themeBtn').onclick = () => {
+  const root = document.documentElement;
+  root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  updatePalette();
+  draw();
+};
+
+function frame(ts) {
+  if (run && !g.over) {
+    acc += ts - last;
+    const T = 300 / +$('#sp').value;
+    let k = 0;
+    while (acc >= T && k++ < 20) { acc -= T; tick(); }
+    if (k >= 20) acc = 0;
+  }
+  last = ts;
+  draw();
+  requestAnimationFrame(frame);
+}
+
+$('#bb').onclick = () => {
+  const b = $('#bb');
+  b.disabled = true;
+  b.textContent = 'Calculando…';
+  setTimeout(() => {
+    try { bench(); } finally {
+      b.disabled = false;
+      b.textContent = '📊 Ejecutar Benchmark (17, 33, 65, 129)';
+    }
+  }, 30);
+};
+
+function bench() {
+  const seed = +$('#sd').value || 1, rows = [];
+  const csv = ['equipo,semilla,tamano,repeticion,algoritmo,ms_medio,nodos_medios,costo_medio'];
+  const eq = `${navigator.hardwareConcurrency || '?'} hilos / ${navigator.platform || 'navegador'}`;
+
+  for (const n of [17, 33, 65, 129]) {
+    const road = genMap(n, seed), r = rng(seed + n), N = n * n, risk = new Float32Array(N);
+    const G = { n, road, risk, blocked: new Uint8Array(N) }, rc = [];
+    for (let i = 0; i < N; i++) {
+      if (road[i]) { rc.push(i); if (r() < 0.06) risk[i] = 3; }
+    }
+    search(G, rc[0], rc[rc.length - 1], 'A*', false);
+    search(G, rc[0], rc[rc.length - 1], 'Dijkstra', false);
+
+    const agg = { 'A*': { m: 0, e: 0, c: 0 }, Dijkstra: { m: 0, e: 0, c: 0 } };
+    let opt = 0, tot = 0;
+    for (let rep = 1; rep <= 5; rep++) {
+      const a2 = { 'A*': { m: 0, e: 0, c: 0 }, Dijkstra: { m: 0, e: 0, c: 0 } };
+      for (let k = 0; k < 10; k++) {
+        const a = rc[(r() * rc.length) | 0], b = rc[(r() * rc.length) | 0], q = {};
+        for (const al of ['Dijkstra', 'A*']) {
+          q[al] = search(G, a, b, al, false);
+          const z = a2[al];
+          z.m += q[al].ms; z.e += q[al].exp; z.c += q[al].cost;
+        }
+        tot++;
+        if (Math.abs(q.Dijkstra.cost - q['A*'].cost) < 1e-6) opt++;
+      }
+      for (const al of ['Dijkstra', 'A*']) {
+        const z = a2[al];
+        csv.push([eq, seed, n, rep, al, (z.m / 10).toFixed(4), (z.e / 10).toFixed(1), (z.c / 10).toFixed(2)].join(','));
+        for (const f of 'mec') agg[al][f] += z[f] / 50;
+      }
+    }
+    for (const al of ['Dijkstra', 'A*']) {
+      rows.push(
+        `<tr><td>${n} × ${n}</td><td>${al}</td><td>${agg[al].m.toFixed(3)}</td><td>${agg[al].e.toFixed(0)}</td><td>${agg[al].c.toFixed(1)}</td><td>${al === 'A*' ? ((100 * opt) / tot).toFixed(0) + '%' : '—'}</td></tr>`
+      );
+    }
+  }
+
+  $('#bo').innerHTML =
+    `<table><tr><th>Mapa</th><th>Algoritmo</th><th>ms / búsqueda</th><th>Nodos expandidos</th><th>Costo medio</th><th>A* Óptimo</th></tr>${rows.join('')}</table>` +
+    `<p style="color:var(--mu);margin:8px 0 4px;font-size:12px">Equipo: ${eq} · Semilla: ${seed}</p>` +
+    `<textarea id="csvArea" readonly aria-label="CSV de resultados">${csv.join('\n')}</textarea>`;
+
+  const cp = $('#copyCsv');
+  cp.style.display = 'inline-flex';
+  cp.onclick = () => {
+    navigator.clipboard && navigator.clipboard.writeText($('#csvArea').value);
+    cp.textContent = '✅ Copiado';
+    setTimeout(() => { cp.textContent = '📋 Copiar CSV'; }, 1500);
+  };
+}
+
+updatePalette();
+init(25, 2026);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
